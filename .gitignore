@@ -1,0 +1,8 @@
+build/
+*.hex
+*.elf
+*.o
+*.d
+*.s
+*.i
+
