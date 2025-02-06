@@ -4,27 +4,70 @@
     Initializes I/O pins for this application.
 
     - Disables the ADC (if analog functions aren't needed).
-    - Configures UART_TX and LED_PIN as outputs.
+    - Configures UART_TX and LED_GATE_PIN, LED_TOGGLE_PIN, LED_PULSE_PIN as outputs.
     - Sets initial states:
         * UART_TX: idle high.
-        * LED_PIN: set off (adjust based on wiring: active-high or active-low).
-    - For any unused pins, you might want to explicitly disable pull-ups or set them as outputs.
+        * LED_GATE_PIN: set off
+        * LED_TOGGLE_PIN: set off
+        * LED_PULSE_PIN: set off
 */
 void init_pins(void) {
     // Disable ADC to ensure that all pins function as digital I/O
     ADCSRA &= ~(1 << ADEN);
 
+    // Set button pin as input
+    DDRB &= ~(1 << BUTTON_PIN);
+
+    // Set signal out pin as output
+    DDRB |= (1 << SIG_OUT_PIN);
+
     // LED pin configuration:
-    DDRB |= (1 << LED_PIN);
+    // Set all LED pins as outputs
+    DDRB |= (1 << LED_GATE_PIN) | (1 << LED_TOGGLE_PIN) | (1 << LED_PULSE_PIN);
     
     // Configure LED off initially.
-    PORTB &= ~(1 << LED_PIN);
+    PORTB &= ~((1 << LED_GATE_PIN) | (1 << LED_TOGGLE_PIN) | (1 << LED_PULSE_PIN));
 
-    // For unused pins (e.g., PB1, PB2, PB4), decide whether to use pull-ups or drive them as outputs.
-    // Here we disable pull-ups for inputs by driving PORT bits low (if leaving as inputs)
-    // or set them as outputs in a known state.
-    //
-    // Example: Setting PB1, PB2, and PB4 as outputs and driving them low:
-    DDRB |= (1 << PB1) | (1 << PB2) | (1 << PB3) | (1 << PB4);
-    PORTB &= ~((1 << PB1) | (1 << PB2) | (1 << PB3) | (1 << PB4));
+    // Configure signal out pin as low
+    PORTB &= ~(1 << SIG_OUT_PIN);
+
+    // Ensure button pin is not pulled up
+    PORTB &= ~(1 << BUTTON_PIN);
+}
+
+/**
+ * Sets the specified pin high.
+ * 
+ * @param pin The pin number to set high
+ */
+void set_pin(uint8_t pin) {
+    PORTB |= (1 << pin);
+}
+
+/**
+ * Sets the specified pin low.
+ * 
+ * @param pin The pin number to set low
+ */
+void clear_pin(uint8_t pin) {
+    PORTB &= ~(1 << pin);
+}
+
+/**
+ * Toggles the specified pin (inverts its current state).
+ * 
+ * @param pin The pin number to toggle
+ */
+void toggle_pin(uint8_t pin) {
+    PORTB ^= (1 << pin);
+}
+
+/**
+ * Reads the current state of the specified pin.
+ * 
+ * @param pin The pin number to read
+ * @return 1 if the pin is high, 0 if the pin is low
+ */
+uint8_t read_pin(uint8_t pin) {
+    return (PINB & (1 << pin)) != 0;
 }

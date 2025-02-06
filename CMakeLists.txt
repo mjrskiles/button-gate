@@ -32,6 +32,8 @@ include_directories(include)
 add_executable(${PROJECT_NAME} 
     src/main.c
     src/hal.c
+    src/startup.c
+    src/input/button.c
 )
 
 # Generate hex file
