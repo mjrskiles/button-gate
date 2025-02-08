@@ -12,7 +12,7 @@ int main(void) {
     // Flash LEDs to test startup sequence
     run_startup_sequence();
 
-    // Initialize buttons
+    // Initialize button
     Button button1;
     init_button(&button1, BUTTON_PIN);
 

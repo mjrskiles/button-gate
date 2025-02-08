@@ -1,4 +1,5 @@
 #include "hal.h"
+#include <avr/interrupt.h>
 
 /*
     Initializes I/O pins for this application.
@@ -70,4 +71,53 @@ void toggle_pin(uint8_t pin) {
  */
 uint8_t read_pin(uint8_t pin) {
     return (PINB & (1 << pin)) != 0;
+}
+
+// Global variable to keep track of milliseconds
+static volatile uint32_t timer0_millis = 0;
+
+/**
+ * Initializes Timer0 for millisecond timing
+ * Uses Timer0 in CTC mode with a 8 prescaler
+ * For 1MHz clock: 1000000/8/125 = 1000Hz (1ms)
+ */
+void init_timer0(void) {
+    // Set Timer0 to CTC mode
+    TCCR0A = (1 << WGM01);
+    
+    // Set prescaler to 8
+    TCCR0B = (1 << CS01);
+    
+    // Set compare value for 1ms intervals (with 1MHz clock)
+    OCR0A = 124;  // (1000000/8/1000) - 1
+    
+    // Enable Timer0 compare match interrupt
+    TIMSK |= (1 << OCIE0A);
+    
+    // Enable global interrupts
+    sei();
+}
+
+/**
+ * Timer0 compare match interrupt handler
+ * Increments millisecond counter
+ */
+ISR(TIMER0_COMPA_vect) {
+    timer0_millis++;
+}
+
+/**
+ * Returns the number of milliseconds since the program started
+ * 
+ * @return Number of milliseconds since program start
+ */
+uint32_t millis(void) {
+    uint32_t m;
+    
+    // Disable interrupts while reading timer0_millis
+    cli();
+    m = timer0_millis;
+    sei();
+    
+    return m;
 }
