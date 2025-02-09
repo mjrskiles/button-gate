@@ -6,4 +6,7 @@ build/
 *.s
 *.i
 
+build_tests/
+
 .cursorrules
+.vscode

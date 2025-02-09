@@ -2,20 +2,20 @@
 
 void run_startup_sequence(void) {
     // Flash gate LED
-    set_pin(LED_GATE_PIN);
+    hal_set_pin(LED_MODE_TOP_PIN);
     _delay_ms(STARTUP_LED_DURATION_MS);
-    clear_pin(LED_GATE_PIN);
+    hal_clear_pin(LED_MODE_TOP_PIN);
     _delay_ms(STARTUP_LED_DURATION_MS);
 
     // Flash pulse LED
-    set_pin(LED_PULSE_PIN);
+    hal_set_pin(LED_MODE_BOTTOM_PIN);
     _delay_ms(STARTUP_LED_DURATION_MS);
-    clear_pin(LED_PULSE_PIN);
+    hal_clear_pin(LED_MODE_BOTTOM_PIN);
     _delay_ms(STARTUP_LED_DURATION_MS);
 
     // Flash toggle LED
-    set_pin(LED_TOGGLE_PIN);
+    hal_set_pin(LED_OUTPUT_INDICATOR_PIN);
     _delay_ms(STARTUP_LED_DURATION_MS);
-    clear_pin(LED_TOGGLE_PIN);
+    hal_clear_pin(LED_OUTPUT_INDICATOR_PIN);
     _delay_ms(STARTUP_LED_DURATION_MS);
 }

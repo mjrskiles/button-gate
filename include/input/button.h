@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "hal.h"
+#include "hardware/hal_interface.h"
 
 typedef enum {
     MODE_GATE,
@@ -16,14 +16,17 @@ typedef struct Button {
     uint8_t pin;
     bool pressed;
     bool last_state;
+    bool rising_edge;
     uint8_t tap_count;
     uint32_t last_tap_time;
     ButtonMode mode;
 } Button;
 
-void init_button(Button *button, uint8_t pin);
-static bool is_rising_edge(bool current_state, bool last_state);
-void update_button(Button *button);
-ButtonMode get_button_mode(Button *button);
+bool button_init(Button *button, uint8_t pin);
+void button_update(Button *button);
+ButtonMode button_get_mode(Button *button);
+
+// Helper functions
+bool is_rising_edge(bool current_state, bool last_state);
 
 #endif // BUTTONGATE_INPUT_BUTTON_H

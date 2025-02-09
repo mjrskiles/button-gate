@@ -1,5 +1,16 @@
-#include "hal.h"
-#include <avr/interrupt.h>
+#include "hardware/hal.h"
+
+static HalInterface default_hal = {
+    .init         = hal_init,
+    .set_pin      = hal_set_pin,
+    .clear_pin    = hal_clear_pin,
+    .toggle_pin   = hal_toggle_pin,
+    .read_pin     = hal_read_pin,
+    .init_timer0  = hal_init_timer0,
+    .millis       = hal_millis,
+};
+
+HalInterface *p_hal = &default_hal;
 
 /*
     Initializes I/O pins for this application.
@@ -12,7 +23,8 @@
         * LED_TOGGLE_PIN: set off
         * LED_PULSE_PIN: set off
 */
-void init_pins(void) {
+void hal_init(void) {
+
     // Disable ADC to ensure that all pins function as digital I/O
     ADCSRA &= ~(1 << ADEN);
 
@@ -24,10 +36,10 @@ void init_pins(void) {
 
     // LED pin configuration:
     // Set all LED pins as outputs
-    DDRB |= (1 << LED_GATE_PIN) | (1 << LED_TOGGLE_PIN) | (1 << LED_PULSE_PIN);
+    DDRB |= (1 << LED_MODE_TOP_PIN) | (1 << LED_OUTPUT_INDICATOR_PIN) | (1 << LED_MODE_BOTTOM_PIN);
     
     // Configure LED off initially.
-    PORTB &= ~((1 << LED_GATE_PIN) | (1 << LED_TOGGLE_PIN) | (1 << LED_PULSE_PIN));
+    PORTB &= ~((1 << LED_MODE_TOP_PIN) | (1 << LED_OUTPUT_INDICATOR_PIN) | (1 << LED_MODE_BOTTOM_PIN));
 
     // Configure signal out pin as low
     PORTB &= ~(1 << SIG_OUT_PIN);
@@ -41,7 +53,7 @@ void init_pins(void) {
  * 
  * @param pin The pin number to set high
  */
-void set_pin(uint8_t pin) {
+void hal_set_pin(uint8_t pin) {
     PORTB |= (1 << pin);
 }
 
@@ -50,7 +62,7 @@ void set_pin(uint8_t pin) {
  * 
  * @param pin The pin number to set low
  */
-void clear_pin(uint8_t pin) {
+void hal_clear_pin(uint8_t pin) {
     PORTB &= ~(1 << pin);
 }
 
@@ -59,7 +71,7 @@ void clear_pin(uint8_t pin) {
  * 
  * @param pin The pin number to toggle
  */
-void toggle_pin(uint8_t pin) {
+void hal_toggle_pin(uint8_t pin) {
     PORTB ^= (1 << pin);
 }
 
@@ -69,7 +81,7 @@ void toggle_pin(uint8_t pin) {
  * @param pin The pin number to read
  * @return 1 if the pin is high, 0 if the pin is low
  */
-uint8_t read_pin(uint8_t pin) {
+uint8_t hal_read_pin(uint8_t pin) {
     return (PINB & (1 << pin)) != 0;
 }
 
@@ -81,7 +93,7 @@ static volatile uint32_t timer0_millis = 0;
  * Uses Timer0 in CTC mode with a 8 prescaler
  * For 1MHz clock: 1000000/8/125 = 1000Hz (1ms)
  */
-void init_timer0(void) {
+void hal_init_timer0(void) {
     // Set Timer0 to CTC mode
     TCCR0A = (1 << WGM01);
     
@@ -111,7 +123,7 @@ ISR(TIMER0_COMPA_vect) {
  * 
  * @return Number of milliseconds since program start
  */
-uint32_t millis(void) {
+uint32_t hal_millis(void) {
     uint32_t m;
     
     // Disable interrupts while reading timer0_millis
