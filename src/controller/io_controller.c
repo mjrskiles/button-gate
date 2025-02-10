@@ -2,6 +2,7 @@
 
 void io_controller_init(IOController *io_controller, Button *button, CVOutput *cv_output, uint8_t led_pin) {
     io_controller->button = button;
+    io_controller->mode = MODE_GATE;
     io_controller->cv_output = cv_output;
     io_controller->led_pin = led_pin;
     io_controller->ignore_pressed = false;
@@ -14,7 +15,6 @@ void io_controller_update(IOController *io_controller) {
         io_controller->mode = cv_mode_get_next(io_controller->mode);
         io_controller->ignore_pressed = true;
         button_consume_config_action(io_controller->button);
-        cv_output_reset(io_controller->cv_output); 
     }
 
     switch (io_controller->mode) {
