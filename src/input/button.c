@@ -2,6 +2,7 @@
 
 bool button_init(Button *button, uint8_t pin) {
     button->pin = pin;
+    button->config_action = false;
     button_reset(button);
 
     return true;
@@ -12,7 +13,7 @@ void button_reset(Button *button) {
     button->pressed = false;
     button->last_state = false;
     button->rising_edge = false;
-    button->config_action = false;
+    button->falling_edge = false;
     button->tap_count = 0;
     button->last_rise_time = 0;
     button->last_fall_time = 0;
@@ -44,6 +45,7 @@ bool button_has_falling_edge(Button *button) {
 void button_update(Button *button) {
     button->raw_state = p_hal->read_pin(button->pin);
     button->rising_edge = false;
+    button->falling_edge = false;
     
     // Detect rising edge (button press)
     if (button_has_rising_edge(button)) {
@@ -53,6 +55,7 @@ void button_update(Button *button) {
 
     // Detect falling edge (button release)
     if (button_has_falling_edge(button)) {
+        button->falling_edge = true;
         button->pressed = false;
     }
 

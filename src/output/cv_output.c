@@ -53,7 +53,7 @@ bool cv_output_update_pulse(CVOutput *cv_output, bool input_state) {
 }
 
 bool cv_output_update_toggle(CVOutput *cv_output, bool input_state) {
-    static bool last_input_state = false;
+    static bool last_input_state = true;
 
     // Only toggle on rising edge (false -> true transition)
     if (input_state && !last_input_state) {

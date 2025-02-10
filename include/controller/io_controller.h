@@ -13,6 +13,7 @@ typedef struct IOController {
     CVOutput *cv_output; 
     uint8_t led_pin;
     CVMode mode;
+    bool ignore_pressed;
 } IOController;
 
 void io_controller_init(IOController *io_controller, Button *button, CVOutput *cv_output, uint8_t led_pin);

@@ -17,7 +17,8 @@ typedef struct Button {
     bool pressed;   // True if the button is pressed. This is debounced and represents a real user press.
     bool last_state; // Last state of the button.
     bool rising_edge; // True if the button has a rising edge
-    bool config_action; // True if the button has a config action
+    bool falling_edge; // True if the button has a falling edge
+    bool config_action; // True if the button has detected a config action
     uint8_t tap_count; // Number of taps on the button (for config action)
     uint32_t last_rise_time; // Last time the button had a rising edge
     uint32_t last_fall_time; // Last time the button had a falling edge
