@@ -15,6 +15,8 @@ typedef struct CVOutput {
 
 void cv_output_init(CVOutput *cv_output, uint8_t pin);
 
+void cv_output_reset(CVOutput *cv_output);
+
 void cv_output_set(CVOutput *cv_output);
 
 void cv_output_clear(CVOutput *cv_output);

@@ -12,6 +12,8 @@ void io_controller_update(IOController *io_controller) {
     if (io_controller->button->config_action) {
         io_controller->mode = cv_mode_get_next(io_controller->mode);
         button_consume_config_action(io_controller->button);
+        button_reset(io_controller->button);
+        cv_output_reset(io_controller->cv_output);
     }
 
     switch (io_controller->mode) {

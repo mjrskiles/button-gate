@@ -20,10 +20,16 @@ typedef struct Button {
     bool config_action; // True if the button has a config action
     uint8_t tap_count; // Number of taps on the button (for config action)
     uint32_t last_rise_time; // Last time the button had a rising edge
-    uint32_t last_fall_time;
+    uint32_t last_fall_time; // Last time the button had a falling edge
 } Button;
 
 bool button_init(Button *button, uint8_t pin);
+
+/*
+    Reset the button to its initial state
+*/
+void button_reset(Button *button);
+
 void button_update(Button *button);
 
 /*

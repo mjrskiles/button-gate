@@ -2,6 +2,12 @@
 
 bool button_init(Button *button, uint8_t pin) {
     button->pin = pin;
+    button_reset(button);
+
+    return true;
+}
+
+void button_reset(Button *button) {
     button->raw_state = false;
     button->pressed = false;
     button->last_state = false;
@@ -10,8 +16,6 @@ bool button_init(Button *button, uint8_t pin) {
     button->tap_count = 0;
     button->last_rise_time = 0;
     button->last_fall_time = 0;
-
-    return true;
 }
 
 bool button_has_rising_edge(Button *button) {

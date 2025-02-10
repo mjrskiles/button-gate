@@ -5,6 +5,10 @@ void cv_output_init(CVOutput *cv_output, uint8_t pin) {
     cv_output->state = false;
 }
 
+void cv_output_reset(CVOutput *cv_output) {
+    cv_output_clear(cv_output);
+}
+
 void cv_output_set(CVOutput *cv_output) {
     cv_output->state = true;
     p_hal->set_pin(cv_output->pin);
