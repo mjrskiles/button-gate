@@ -21,13 +21,14 @@ TEST_TEAR_DOWN(ButtonTests) {
 
 TEST(ButtonTests, TestButtonInit) {
     TEST_ASSERT_EQUAL(true, button_init(&button, 2));
-    TEST_ASSERT_EQUAL(MODE_GATE, button_get_mode(&button));
     TEST_ASSERT_EQUAL(2, button.pin);
     TEST_ASSERT_EQUAL(false, button.pressed);
     TEST_ASSERT_EQUAL(false, button.last_state);
     TEST_ASSERT_EQUAL(false, button.rising_edge);
+    TEST_ASSERT_EQUAL(false, button.config_action);
     TEST_ASSERT_EQUAL(0, button.tap_count);
-    TEST_ASSERT_EQUAL(0, button.last_tap_time);
+    TEST_ASSERT_EQUAL(0, button.last_rise_time);
+    TEST_ASSERT_EQUAL(0, button.last_fall_time);
 }
 
 TEST_GROUP_RUNNER(ButtonTests) {

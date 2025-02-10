@@ -1,6 +1,11 @@
 #include "hardware/hal.h"
 
 static HalInterface default_hal = {
+    .button_pin         = BUTTON_PIN,
+    .sig_out_pin        = SIG_OUT_PIN,
+    .led_mode_top_pin   = LED_MODE_TOP_PIN,
+    .led_output_indicator_pin = LED_OUTPUT_INDICATOR_PIN,
+    .led_mode_bottom_pin = LED_MODE_BOTTOM_PIN,
     .init         = hal_init,
     .set_pin      = hal_set_pin,
     .clear_pin    = hal_clear_pin,
@@ -46,6 +51,9 @@ void hal_init(void) {
 
     // Ensure button pin is not pulled up
     PORTB &= ~(1 << BUTTON_PIN);
+
+    // Initialize Timer0
+    hal_init_timer0();
 }
 
 /**

@@ -5,6 +5,7 @@ find_program(AVR_CC avr-gcc REQUIRED)
 find_program(AVR_OBJCOPY avr-objcopy REQUIRED)
 find_program(AVR_SIZE_TOOL avr-size REQUIRED)
 find_program(AVR_OBJDUMP avr-objdump REQUIRED)
+find_program(AVR_STRIP avr-strip REQUIRED)
 find_program(AVRDUDE avrdude REQUIRED)
 
 option(BUILD_TESTS "Build test suite" OFF)
@@ -56,7 +57,7 @@ else()
 
     set(CMAKE_C_FLAGS "-mmcu=${MCU} -DF_CPU=${F_CPU} -Os -Wall -Wextra -Werror")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections -fshort-enums")
-    set(CMAKE_EXE_LINKER_FLAGS "-mmcu=${MCU} -Wl,--gc-sections")
+    set(CMAKE_EXE_LINKER_FLAGS "-mmcu=${MCU} -Wl,--gc-sections -s")
 
     # Collect source files recursively
     file(GLOB_RECURSE SOURCES 
@@ -69,6 +70,7 @@ else()
 
     # Generate hex file
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${AVR_STRIP} --strip-debug ${PROJECT_NAME}
         COMMAND ${AVR_OBJCOPY} -O ihex -R .eeprom ${PROJECT_NAME} ${PROJECT_NAME}.hex
         COMMAND ${AVR_SIZE_TOOL} ${PROJECT_NAME}
     )

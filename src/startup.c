@@ -1,21 +1,21 @@
 #include "startup.h"
 
 void run_startup_sequence(void) {
-    // Flash gate LED
-    hal_set_pin(LED_MODE_TOP_PIN);
-    _delay_ms(STARTUP_LED_DURATION_MS);
-    hal_clear_pin(LED_MODE_TOP_PIN);
-    _delay_ms(STARTUP_LED_DURATION_MS);
+    // Flash top LED
+    p_hal->set_pin(p_hal->led_mode_top_pin);
+    util_delay_ms(STARTUP_LED_DURATION_MS);
+    p_hal->clear_pin(p_hal->led_mode_top_pin);
+    util_delay_ms(STARTUP_LED_DURATION_MS);
 
-    // Flash pulse LED
-    hal_set_pin(LED_MODE_BOTTOM_PIN);
-    _delay_ms(STARTUP_LED_DURATION_MS);
-    hal_clear_pin(LED_MODE_BOTTOM_PIN);
-    _delay_ms(STARTUP_LED_DURATION_MS);
+    // Flash middle LED
+    p_hal->set_pin(p_hal->led_mode_bottom_pin);
+    util_delay_ms(STARTUP_LED_DURATION_MS);
+    p_hal->clear_pin(p_hal->led_mode_bottom_pin);
+    util_delay_ms(STARTUP_LED_DURATION_MS);
 
-    // Flash toggle LED
-    hal_set_pin(LED_OUTPUT_INDICATOR_PIN);
-    _delay_ms(STARTUP_LED_DURATION_MS);
-    hal_clear_pin(LED_OUTPUT_INDICATOR_PIN);
-    _delay_ms(STARTUP_LED_DURATION_MS);
+    // Flash bottom LED
+    p_hal->set_pin(p_hal->led_output_indicator_pin);
+    util_delay_ms(STARTUP_LED_DURATION_MS);
+    p_hal->clear_pin(p_hal->led_output_indicator_pin);
+    util_delay_ms(STARTUP_LED_DURATION_MS);
 }

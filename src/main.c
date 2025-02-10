@@ -1,8 +1,8 @@
 #include <avr/io.h>
-#include <util/delay.h>
-#include "hardware/hal_interface.h"    
+#include <util/delay.h>  
 #include "startup.h"
-#include "input/button.h"
+#include "hardware/hal_interface.h"  
+#include "controller/io_controller.h"
 
 int main(void) {
 
@@ -14,20 +14,18 @@ int main(void) {
 
     // Initialize button
     Button button1;
-    button_init(&button1, BUTTON_PIN);
+    button_init(&button1, p_hal->button_pin);
 
-    p_hal->set_pin(LED_MODE_TOP_PIN);
+    // Initialize CV output
+    CVOutput cv_output;
+    cv_output_init(&cv_output, p_hal->sig_out_pin);
 
-    p_hal->set_pin(SIG_OUT_PIN);
+    // Initialize IO controller
+    IOController io_controller;
+    io_controller_init(&io_controller, &button1, &cv_output, p_hal->led_output_indicator_pin);
 
     while (1) {
-        button_update(&button1);
-
-        if (button1.pressed) {
-            p_hal->set_pin(SIG_OUT_PIN);
-        } else {
-            p_hal->clear_pin(SIG_OUT_PIN);
-        }
+        io_controller_update(&io_controller);
     }
 
     return 0;

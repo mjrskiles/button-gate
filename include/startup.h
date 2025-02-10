@@ -1,8 +1,8 @@
 #ifndef BUTTONGATE_STARTUP_H
 #define BUTTONGATE_STARTUP_H
 
-#include <util/delay.h>
-#include "hardware/hal.h"
+#include "hardware/hal_interface.h"
+#include "utility/delay.h"
 
 // Duration for each LED flash in milliseconds
 #define STARTUP_LED_DURATION_MS 200

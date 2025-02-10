@@ -37,6 +37,11 @@ uint32_t mock_millis(void) {
 
 // The mock interface instance
 static HalInterface mock_hal = {
+    .button_pin         = 0,
+    .sig_out_pin        = 1,
+    .led_mode_top_pin   = 2,
+    .led_output_indicator_pin = 3,
+    .led_mode_bottom_pin = 4,
     .init         = mock_hal_init,
     .set_pin      = mock_set_pin,
     .clear_pin    = mock_clear_pin,

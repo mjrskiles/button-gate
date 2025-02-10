@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#include "hardware/hal_interface.h"
+
 #define BUTTON_PIN PB0
 #define SIG_OUT_PIN PB1
 #define LED_MODE_TOP_PIN PB2
