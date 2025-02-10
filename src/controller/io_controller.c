@@ -15,26 +15,29 @@ void io_controller_update(IOController *io_controller) {
         io_controller->mode = cv_mode_get_next(io_controller->mode);
         io_controller->ignore_pressed = true;
         button_consume_config_action(io_controller->button);
+        cv_output_reset(io_controller->cv_output);
     }
+
+    bool input_triggered = io_controller->ignore_pressed ? false : io_controller->button->pressed;
 
     switch (io_controller->mode) {
         case MODE_GATE:
-            cv_output_update_gate(io_controller->cv_output, io_controller->ignore_pressed ? false : io_controller->button->pressed);
+            cv_output_update_gate(io_controller->cv_output, input_triggered);
             p_hal->set_pin(p_hal->led_mode_top_pin);
             p_hal->clear_pin(p_hal->led_mode_bottom_pin);
             break;
         case MODE_PULSE:
-            cv_output_update_pulse(io_controller->cv_output, io_controller->button->pressed);
+            cv_output_update_pulse(io_controller->cv_output, input_triggered);
             p_hal->clear_pin(p_hal->led_mode_top_pin);
             p_hal->set_pin(p_hal->led_mode_bottom_pin);
             break;
         case MODE_TOGGLE:
-            cv_output_update_toggle(io_controller->cv_output, io_controller->ignore_pressed ? true : io_controller->button->pressed);
+            cv_output_update_toggle(io_controller->cv_output, input_triggered);
             p_hal->set_pin(p_hal->led_mode_top_pin);
             p_hal->set_pin(p_hal->led_mode_bottom_pin);
             break;
         default:
-            cv_output_update_gate(io_controller->cv_output, io_controller->button->pressed);
+            cv_output_update_gate(io_controller->cv_output, input_triggered);
             p_hal->set_pin(p_hal->led_mode_top_pin);
             p_hal->clear_pin(p_hal->led_mode_bottom_pin);
             break;
