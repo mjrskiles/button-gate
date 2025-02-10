@@ -60,3 +60,7 @@ void use_mock_hal(void) {
 void advance_mock_time(uint32_t ms) {
     vmock_millis += ms;
 } 
+
+void reset_mock_time(void) {
+    vmock_millis = 0;
+}

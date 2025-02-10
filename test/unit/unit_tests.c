@@ -1,7 +1,10 @@
 #include "unity_fixture.h"
 
 #include "example/test_example.h"
-#include "button/test_button.h"
+#include "input/test_button.h"
+#include "output/test_cv_output.h"
+#include "state/test_mode.h"
+#include "controller/test_controller.h"
 
 void run_all_tests(void);
 
@@ -21,6 +24,9 @@ int main(void) {
 void run_all_tests(void) {
     RunAllExampleTests();
     RunAllButtonTests();
+    RunAllCVOutputTests();
+    RunAllModeTests();
+    RunAllIOControllerTests();
 }
 
 /**

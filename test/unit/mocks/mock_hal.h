@@ -61,4 +61,9 @@ void use_mock_hal(void);
  */
 void advance_mock_time(uint32_t ms);
 
+/**
+ * @brief Resets the mock system time to 0
+ */
+void reset_mock_time(void);
+
 #endif // MOCK_HAL_H

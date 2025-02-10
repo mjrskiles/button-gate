@@ -9,6 +9,10 @@ file(GLOB_RECURSE TEST_SOURCES
 add_executable(${PROJECT_NAME}_unit_tests
     ${TEST_SOURCES}
     ${CMAKE_SOURCE_DIR}/src/input/button.c
+    ${CMAKE_SOURCE_DIR}/src/output/cv_output.c
+    ${CMAKE_SOURCE_DIR}/src/controller/io_controller.c
+    ${CMAKE_SOURCE_DIR}/src/state/mode.c
+    ${CMAKE_SOURCE_DIR}/src/utility/delay.c
 )
 
 # Add test include directories
