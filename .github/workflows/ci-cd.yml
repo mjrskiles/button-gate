@@ -1,0 +1,48 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Build Unit Tests
+        run: |
+          mkdir build_tests
+          cd build_tests
+          # Configure project with tests enabled
+          cmake -DBUILD_TESTS=ON ..
+          cmake --build .
+
+      - name: Run Unit Tests
+        run: |
+          cd build_tests/test/unit
+          ./button-gate_unit_tests
+
+  flash:
+    needs: test
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Build Production Firmware
+        run: |
+          mkdir build_firmware
+          cd build_firmware
+          cmake ..
+          cmake --build .
+
+      - name: Flash Firmware to Hardware
+        run: |
+          cd build_firmware
+          make flash
