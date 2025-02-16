@@ -4,21 +4,20 @@
 #include "unity.h"
 #include "unity_fixture.h"
 #include "output/cv_output.h"
-#include "mocks/mock_hal.h"
+#include "hardware/hal_interface.h"
 
 CVOutput cv_output;
 
 TEST_GROUP(CVOutputTests);
 
 TEST_SETUP(CVOutputTests) {
-    use_mock_hal();
-    mock_hal_init();
+    p_hal->init();
     cv_output_init(&cv_output, 1);
 }
 
 TEST_TEAR_DOWN(CVOutputTests) {
     cv_output_reset(&cv_output);
-    reset_mock_time();
+    p_hal->reset_time();
 
     // Release the button and make sure the static variables are reset
     cv_output_update_pulse(&cv_output, false);
@@ -67,7 +66,7 @@ TEST(CVOutputTests, TestCVOutputUpdatePulseRisingEdge) {
     TEST_ASSERT_TRUE(cv_output.state);
 
     // Release button
-    advance_mock_time(1000);
+    p_hal->advance_time(1000);
     cv_output_update_pulse(&cv_output, false);
     TEST_ASSERT_FALSE(cv_output.state);
 }
@@ -78,12 +77,12 @@ TEST(CVOutputTests, TestCVOutputUpdatePulseDuration) {
     TEST_ASSERT_TRUE(cv_output.state);
     
     // Advance time just before pulse should end
-    advance_mock_time(PULSE_DURATION_MS - 1);
+    p_hal->advance_time(PULSE_DURATION_MS - 1);
     cv_output_update_pulse(&cv_output, false);
     TEST_ASSERT_TRUE(cv_output.state);
     
     // Advance time past pulse duration
-    advance_mock_time(2);
+    p_hal->advance_time(2);
     cv_output_update_pulse(&cv_output, false);
     TEST_ASSERT_FALSE(cv_output.state);
 }
@@ -94,12 +93,12 @@ TEST(CVOutputTests, TestCVOutputUpdatePulseNoRetrigger) {
     TEST_ASSERT_TRUE(cv_output.state);
     
     // Try to retrigger while pulse is active
-    advance_mock_time(PULSE_DURATION_MS / 2);
+    p_hal->advance_time(PULSE_DURATION_MS / 2);
     cv_output_update_pulse(&cv_output, true);
     TEST_ASSERT_TRUE(cv_output.state);
     
     // Pulse should still end at original time
-    advance_mock_time(PULSE_DURATION_MS / 2 + 1);
+    p_hal->advance_time(PULSE_DURATION_MS / 2 + 1);
     cv_output_update_pulse(&cv_output, false);
     TEST_ASSERT_FALSE(cv_output.state);
 }

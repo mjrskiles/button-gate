@@ -11,8 +11,10 @@ static HalInterface default_hal = {
     .clear_pin    = hal_clear_pin,
     .toggle_pin   = hal_toggle_pin,
     .read_pin     = hal_read_pin,
-    .init_timer0  = hal_init_timer0,
+    .init_timer   = hal_init_timer0,
     .millis       = hal_millis,
+    .advance_time = hal_advance_time,
+    .reset_time   = hal_reset_time,
 };
 
 HalInterface *p_hal = &default_hal;
@@ -140,4 +142,18 @@ uint32_t hal_millis(void) {
     sei();
     
     return m;
+}
+
+void hal_advance_time(uint32_t ms) {
+    // Disable interrupts while updating timer0_millis
+    cli();
+    timer0_millis += ms;
+    sei();
+}
+
+void hal_reset_time(void) {
+    // Disable interrupts while updating timer0_millis
+    cli();
+    timer0_millis = 0;
+    sei();
 }

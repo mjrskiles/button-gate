@@ -19,8 +19,10 @@ typedef struct HalInterface {
     uint8_t  (*read_pin)(uint8_t pin);
 
     // Timer functions
-    void     (*init_timer0)(void);
+    void     (*init_timer)(void);
     uint32_t (*millis)(void);
+    void     (*advance_time)(uint32_t ms);
+    void     (*reset_time)(void);
 } HalInterface;
 
 // Global pointer to the current HAL implementation.

@@ -24,6 +24,8 @@ uint8_t hal_read_pin(uint8_t pin);
 
 void hal_init_timer0(void);
 uint32_t hal_millis(void);
+void hal_advance_time(uint32_t ms);
+void hal_reset_time(void);
 
 #endif
 

@@ -4,21 +4,20 @@
 #include "unity.h"
 #include "unity_fixture.h"
 #include "input/button.h"
-#include "mocks/mock_hal.h"
+#include "hardware/hal_interface.h"
 
 Button button;
 
 TEST_GROUP(ButtonTests);
 
 TEST_SETUP(ButtonTests) {
-    use_mock_hal();
-    mock_hal_init();
+    p_hal->init();
     button_init(&button, 2);
 }
 
 TEST_TEAR_DOWN(ButtonTests) {
     button_reset(&button);
-    reset_mock_time();
+    p_hal->init();
 }
 
 TEST(ButtonTests, TestButtonInit) {
@@ -56,15 +55,15 @@ TEST(ButtonTests, TestButtonReset) {
 
 TEST(ButtonTests, TestButtonUpdate) {
     // Test rising edge
-    mock_set_pin(button.pin);
-    advance_mock_time(100);
+    p_hal->set_pin(button.pin);
+    p_hal->advance_time(100);
     button_update(&button);
     TEST_ASSERT_TRUE(button.rising_edge);
     TEST_ASSERT_TRUE(button.pressed);
     
     // Test falling edge
-    mock_clear_pin(button.pin);
-    advance_mock_time(100);
+    p_hal->clear_pin(button.pin);
+    p_hal->advance_time(100);
     button_update(&button);
     TEST_ASSERT_TRUE(button.falling_edge);
     TEST_ASSERT_FALSE(button.pressed);
@@ -73,19 +72,19 @@ TEST(ButtonTests, TestButtonUpdate) {
 TEST(ButtonTests, TestButtonConfigAction) {
     // Simulate 5 quick taps followed by hold
     for(int i = 0; i < 5; i++) {
-        mock_set_pin(button.pin);
+        p_hal->set_pin(button.pin);
         button_update(&button);
-        advance_mock_time(100);
+        p_hal->advance_time(100);
         
-        mock_clear_pin(button.pin);
+        p_hal->clear_pin(button.pin);
         button_update(&button);
-        advance_mock_time(100);
+        p_hal->advance_time(100);
     }
     
     // Final press and hold
-    mock_set_pin(button.pin);
+    p_hal->set_pin(button.pin);
     button_update(&button);
-    advance_mock_time(HOLD_TIME_MS + 100);
+    p_hal->advance_time(HOLD_TIME_MS + 100);
     button_update(&button);
     
     TEST_ASSERT_TRUE(button.config_action);
@@ -98,37 +97,37 @@ TEST(ButtonTests, TestButtonConsumeConfigAction) {
 }
 
 TEST(ButtonTests, TestButtonHasRisingEdge) {
-    mock_set_pin(button.pin);
-    advance_mock_time(100);
+    p_hal->set_pin(button.pin);
+    p_hal->advance_time(100);
     button_update(&button);
     TEST_ASSERT_TRUE(button.rising_edge);
     
     // Test debounce
     button_update(&button);
-    advance_mock_time(100);
+    p_hal->advance_time(100);
     TEST_ASSERT_FALSE(button.rising_edge);
     
-    advance_mock_time(EDGE_DEBOUNCE_MS + 1);
+    p_hal->advance_time(EDGE_DEBOUNCE_MS + 1);
     button_update(&button);
-    advance_mock_time(100);
+    p_hal->advance_time(100);
     TEST_ASSERT_FALSE(button.rising_edge);
 }
 
 TEST(ButtonTests, TestButtonHasFallingEdge) {
     // First set button to pressed state
-    mock_set_pin(button.pin);
-    advance_mock_time(100);
+    p_hal->set_pin(button.pin);
+    p_hal->advance_time(100);
     button_update(&button);
     
     // Then test falling edge
-    mock_clear_pin(button.pin);
-    advance_mock_time(100);
+    p_hal->clear_pin(button.pin);
+    p_hal->advance_time(100);
     button_update(&button);
     TEST_ASSERT_TRUE(button.falling_edge);
     
     // Test debounce
     button_update(&button);
-    advance_mock_time(100);
+    p_hal->advance_time(100);
     TEST_ASSERT_FALSE(button.falling_edge);
 }
 
