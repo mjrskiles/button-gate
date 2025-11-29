@@ -5,7 +5,8 @@ build/
 *.d
 *.s
 *.i
-
+.cache/
+.cache
 build_tests/
 
 .cursorrules
