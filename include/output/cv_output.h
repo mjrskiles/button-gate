@@ -11,6 +11,13 @@
 typedef struct CVOutput {
     uint8_t pin;
     bool state;
+
+    // Pulse mode state
+    uint32_t pulse_start_time;
+    bool pulse_active;
+
+    // Edge detection (shared by pulse/toggle)
+    bool last_input_state;
 } CVOutput;
 
 void cv_output_init(CVOutput *cv_output, uint8_t pin);

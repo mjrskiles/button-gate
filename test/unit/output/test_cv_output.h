@@ -18,10 +18,6 @@ TEST_SETUP(CVOutputTests) {
 TEST_TEAR_DOWN(CVOutputTests) {
     cv_output_reset(&cv_output);
     p_hal->reset_time();
-
-    // Release the button and make sure the static variables are reset
-    cv_output_update_pulse(&cv_output, false);
-    cv_output_update_toggle(&cv_output, false);
 }
 
 TEST(CVOutputTests, TestCVOutputInit) {
@@ -129,6 +125,52 @@ TEST(CVOutputTests, TestCVOutputUpdateToggleNoChangeOnHold) {
     TEST_ASSERT_TRUE(cv_output.state);
 }
 
+// P1: Boundary condition tests
+
+TEST(CVOutputTests, TestPulseExpiresAtExactBoundary) {
+    cv_output_update_pulse(&cv_output, true);
+    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(cv_output.pulse_active);
+
+    // Advance exactly to pulse duration boundary
+    p_hal->advance_time(PULSE_DURATION_MS);
+    cv_output_update_pulse(&cv_output, false);
+
+    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(cv_output.pulse_active);
+}
+
+TEST(CVOutputTests, TestPulseStillActiveJustBeforeBoundary) {
+    cv_output_update_pulse(&cv_output, true);
+    TEST_ASSERT_TRUE(cv_output.state);
+
+    // Advance to just before pulse duration boundary
+    p_hal->advance_time(PULSE_DURATION_MS - 1);
+    cv_output_update_pulse(&cv_output, false);
+
+    // Should still be active
+    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(cv_output.pulse_active);
+}
+
+TEST(CVOutputTests, TestPulseImmediateRetriggerAfterExpiry) {
+    // First pulse
+    cv_output_update_pulse(&cv_output, true);
+    p_hal->advance_time(PULSE_DURATION_MS + 1);
+    cv_output_update_pulse(&cv_output, false);
+    TEST_ASSERT_FALSE(cv_output.state);
+
+    // Immediate re-trigger
+    cv_output_update_pulse(&cv_output, true);
+    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(cv_output.pulse_active);
+
+    // Verify second pulse also times out correctly
+    p_hal->advance_time(PULSE_DURATION_MS);
+    cv_output_update_pulse(&cv_output, false);
+    TEST_ASSERT_FALSE(cv_output.state);
+}
+
 TEST_GROUP_RUNNER(CVOutputTests) {
     RUN_TEST_CASE(CVOutputTests, TestCVOutputInit);
     RUN_TEST_CASE(CVOutputTests, TestCVOutputReset);
@@ -141,6 +183,10 @@ TEST_GROUP_RUNNER(CVOutputTests) {
     RUN_TEST_CASE(CVOutputTests, TestCVOutputUpdatePulseNoRetrigger);
     RUN_TEST_CASE(CVOutputTests, TestCVOutputUpdateToggleRisingEdge);
     RUN_TEST_CASE(CVOutputTests, TestCVOutputUpdateToggleNoChangeOnHold);
+    // P1: Boundary condition tests
+    RUN_TEST_CASE(CVOutputTests, TestPulseExpiresAtExactBoundary);
+    RUN_TEST_CASE(CVOutputTests, TestPulseStillActiveJustBeforeBoundary);
+    RUN_TEST_CASE(CVOutputTests, TestPulseImmediateRetriggerAfterExpiry);
 }
 
 void RunAllCVOutputTests() {

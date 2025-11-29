@@ -1,7 +1,8 @@
 #include "mock_hal.h"
 
-// Example mock variables to simulate state
-static bool mock_pin_state = false;
+// Per-pin state tracking (supports pins 0-7)
+#define MOCK_NUM_PINS 8
+static uint8_t mock_pin_states[MOCK_NUM_PINS] = {0};
 static uint32_t vmock_millis = 0;
 
 // The mock interface instance
@@ -29,25 +30,35 @@ void use_mock_hal(void) {
 }
 
 void mock_hal_init(void) {
-    // Initialize your mock state if necessary
-    mock_pin_state = false;
+    for (int i = 0; i < MOCK_NUM_PINS; i++) {
+        mock_pin_states[i] = 0;
+    }
     vmock_millis = 0;
 }
 
 void mock_set_pin(uint8_t pin) {
-    mock_pin_state = true;
+    if (pin < MOCK_NUM_PINS) {
+        mock_pin_states[pin] = 1;
+    }
 }
 
 void mock_clear_pin(uint8_t pin) {
-    mock_pin_state = false;
+    if (pin < MOCK_NUM_PINS) {
+        mock_pin_states[pin] = 0;
+    }
 }
 
 void mock_toggle_pin(uint8_t pin) {
-    mock_pin_state = !mock_pin_state;
+    if (pin < MOCK_NUM_PINS) {
+        mock_pin_states[pin] = !mock_pin_states[pin];
+    }
 }
 
 uint8_t mock_read_pin(uint8_t pin) {
-    return mock_pin_state;
+    if (pin < MOCK_NUM_PINS) {
+        return mock_pin_states[pin];
+    }
+    return 0;
 }
 
 void mock_init_timer0(void) {

@@ -23,24 +23,29 @@ void io_controller_update(IOController *io_controller) {
     switch (io_controller->mode) {
         case MODE_GATE:
             cv_output_update_gate(io_controller->cv_output, input_triggered);
-            p_hal->set_pin(p_hal->led_mode_top_pin);
-            p_hal->clear_pin(p_hal->led_mode_bottom_pin);
             break;
         case MODE_PULSE:
             cv_output_update_pulse(io_controller->cv_output, input_triggered);
-            p_hal->clear_pin(p_hal->led_mode_top_pin);
-            p_hal->set_pin(p_hal->led_mode_bottom_pin);
             break;
         case MODE_TOGGLE:
             cv_output_update_toggle(io_controller->cv_output, input_triggered);
-            p_hal->set_pin(p_hal->led_mode_top_pin);
-            p_hal->set_pin(p_hal->led_mode_bottom_pin);
             break;
         default:
             cv_output_update_gate(io_controller->cv_output, input_triggered);
-            p_hal->set_pin(p_hal->led_mode_top_pin);
-            p_hal->clear_pin(p_hal->led_mode_bottom_pin);
             break;
+    }
+
+    // Update mode indicator LEDs
+    ModeLEDState led_state = cv_mode_get_led_state(io_controller->mode);
+    if (led_state.top) {
+        p_hal->set_pin(p_hal->led_mode_top_pin);
+    } else {
+        p_hal->clear_pin(p_hal->led_mode_top_pin);
+    }
+    if (led_state.bottom) {
+        p_hal->set_pin(p_hal->led_mode_bottom_pin);
+    } else {
+        p_hal->clear_pin(p_hal->led_mode_bottom_pin);
     }
 
     if (io_controller->cv_output->state) {

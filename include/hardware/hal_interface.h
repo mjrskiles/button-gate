@@ -3,6 +3,27 @@
 
 #include <stdint.h>
 
+/**
+ * Hardware Abstraction Layer (HAL) Interface
+ *
+ * This interface decouples application logic from hardware-specific code,
+ * enabling unit testing on the host machine without actual hardware.
+ *
+ * Architecture:
+ * - A global pointer `p_hal` points to the active HAL implementation
+ * - Production builds use the real HAL (hal.c) targeting ATtiny85
+ * - Test builds swap in a mock HAL (mock_hal.c) with virtual time
+ *
+ * Usage in tests:
+ *   p_hal points to mock_hal by default in test builds.
+ *   Use p_hal->advance_time(ms) to simulate time passing.
+ *   Use p_hal->reset_time() in test teardown for isolation.
+ *
+ * Why a global?
+ *   On memory-constrained MCUs (512 bytes SRAM), passing HAL pointers
+ *   to every function wastes stack space. A single global is the
+ *   standard embedded pattern and works well with the mock swap approach.
+ */
 typedef struct HalInterface {
     // pin assignment
     uint8_t  button_pin;

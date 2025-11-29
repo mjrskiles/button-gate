@@ -22,6 +22,10 @@ typedef struct Button {
     uint8_t tap_count; // Number of taps on the button (for config action)
     uint32_t last_rise_time; // Last time the button had a rising edge
     uint32_t last_fall_time; // Last time the button had a falling edge
+
+    // Config action detection state
+    uint32_t last_tap_time; // Last time a tap was registered
+    bool counting_hold; // True if we're counting hold time after reaching required taps
 } Button;
 
 bool button_init(Button *button, uint8_t pin);
