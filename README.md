@@ -110,9 +110,14 @@ After building the application, a HEX file is generated from the ELF binary. Use
    ```
 
    The command uses avrdude with settings defined in the CMakeLists.txt:
-   - **MCU:** ATtiny85  
-   - **Programmer:** stk500v2  
-   - **Programmer Port:** `/dev/ttyACM0` (adjust as needed)
+   - **MCU:** ATtiny85
+   - **Programmer:** stk500v2 (default)
+   - **Programmer Port:** `/dev/ttyACM0` (default)
+
+   To use a different programmer or port, configure CMake with:
+   ```bash
+   cmake -DPROGRAMMER=usbasp -DPROGRAMMER_PORT=/dev/ttyUSB0 ..
+   ```
 
 ### Fuse Settings
 
@@ -138,16 +143,3 @@ After building the application, a HEX file is generated from the ELF binary. Use
 ## License
 
 MIT
-
-## Read/Write Fuses
-
-The fuses are set to default values. No need to program them on a fresh chip.
-
-```bash
-avrdude -p attiny85 -c stk500v2 -P /dev/ttyACM0 -b 115200 -B 125kHz -U lfuse:r:-:h -U hfuse:r:-:h
-```
-
-# Write the fuses on ATtiny85
-```bash
-avrdude -p attiny85 -c stk500v2 -P /dev/ttyACM0 -b 115200 -B 125kHz -U lfuse:w:0x62:m -U hfuse:w:0xdf:m
-```

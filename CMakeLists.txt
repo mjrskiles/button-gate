@@ -51,9 +51,11 @@ else()
 
     # AVR settings
     set(MCU attiny85)
-    set(F_CPU 1000000UL)  
-    set(PROGRAMMER stk500v2)
-    set(PROGRAMMER_PORT /dev/ttyACM0)  # Adjust port as needed
+    set(F_CPU 1000000UL)
+
+    # Programmer settings (can be overridden via cmake -DPROGRAMMER=... -DPROGRAMMER_PORT=...)
+    set(PROGRAMMER "stk500v2" CACHE STRING "AVR programmer type (e.g., stk500v2, usbasp, avrisp2)")
+    set(PROGRAMMER_PORT "/dev/ttyACM0" CACHE STRING "Programmer serial port (e.g., /dev/ttyACM0, /dev/ttyUSB0)")
 
     set(CMAKE_C_FLAGS "-mmcu=${MCU} -DF_CPU=${F_CPU} -Os -Wall -Wextra -Werror")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections -fshort-enums")

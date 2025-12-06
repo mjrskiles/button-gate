@@ -19,17 +19,15 @@ static HalInterface default_hal = {
 
 HalInterface *p_hal = &default_hal;
 
-/*
-    Initializes I/O pins for this application.
-
-    - Disables the ADC (if analog functions aren't needed).
-    - Configures UART_TX and LED_GATE_PIN, LED_TOGGLE_PIN, LED_PULSE_PIN as outputs.
-    - Sets initial states:
-        * UART_TX: idle high.
-        * LED_GATE_PIN: set off
-        * LED_TOGGLE_PIN: set off
-        * LED_PULSE_PIN: set off
-*/
+/**
+ * Initializes I/O pins for this application.
+ *
+ * - Disables the ADC (analog functions aren't needed)
+ * - Configures button pin as input
+ * - Configures signal output and LED pins as outputs
+ * - Sets all outputs to low (off) initially
+ * - Initializes Timer0 for millisecond timing
+ */
 void hal_init(void) {
 
     // Disable ADC to ensure that all pins function as digital I/O

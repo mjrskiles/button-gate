@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI
 
 on:
   push:
@@ -9,49 +9,32 @@ on:
       - main
 
 jobs:
-  test:
-    runs-on: self-hosted
+  build-and-test:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          submodules: true
 
-      # Initialize submodules
-      - name: Initialize submodules
+      - name: Install AVR Toolchain
         run: |
-          git submodule update --init
+          sudo apt-get update
+          sudo apt-get install -y gcc-avr avr-libc binutils-avr avrdude
+
+      - name: Build Firmware
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build .
 
       - name: Build Unit Tests
         run: |
           mkdir build_tests
           cd build_tests
-          # Configure project with tests enabled
           cmake -DBUILD_TESTS=ON ..
           cmake --build .
 
       - name: Run Unit Tests
-        run: |
-          cd build_tests/test/unit
-          ./button-gate_unit_tests
-
-  flash:
-    needs: test
-    runs-on: self-hosted
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Initialize submodules
-        run: |
-          git submodule update --init
-
-      - name: Build Production Firmware
-        run: |
-          mkdir build_firmware
-          cd build_firmware
-          cmake ..
-          cmake --build .
-
-      - name: Flash Firmware to Hardware
-        run: |
-          cd build_firmware
-          make flash
+        run: ./build_tests/test/unit/button-gate_unit_tests
