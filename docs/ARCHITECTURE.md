@@ -36,6 +36,19 @@ Output LED is driven directly from the buffered output circuit, not GPIO.
 
 ## Module Descriptions
 
+### Core Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `core/coordinator` | `src/core/coordinator.c` | Application coordinator - manages FSM hierarchy, routes events |
+| `fsm/fsm` | `src/fsm/fsm.c` | Generic table-driven FSM engine (reusable library) |
+| `events/events` | `src/events/events.c` | Event processor - button gestures, CV edge detection |
+| `modes/mode_handlers` | `src/modes/mode_handlers.c` | Signal processing modes (Gate, Trigger, Toggle, Divide, Cycle) |
+| `hardware/hal` | `src/hardware/hal.c` | Hardware abstraction layer |
+| `input/button` | `src/input/button.c` | Button debouncing and edge detection |
+| `output/cv_output` | `src/output/cv_output.c` | CV output behaviors |
+| `app_init` | `src/app_init.c` | Startup, EEPROM settings, factory reset |
+
 ### HAL (Hardware Abstraction Layer)
 
 Location: `src/hardware/hal.c`, `include/hardware/hal_interface.h`
@@ -144,32 +157,37 @@ Location: `src/output/cv_output.c`
 
 Manages the output pin based on current mode and input state.
 
-**Modes**:
+**Modes** (implemented in `src/modes/mode_handlers.c`):
 
-| Mode   | Behavior |
-|--------|----------|
-| Gate   | Output follows input directly |
-| Pulse  | Rising edge triggers 10ms pulse |
-| Toggle | Rising edge flips output state |
+| Mode    | Behavior |
+|---------|----------|
+| Gate    | Output follows input directly |
+| Trigger | Rising edge triggers fixed-duration pulse (1-50ms configurable) |
+| Toggle  | Rising edge flips output state |
+| Divide  | Output pulse every N inputs (clock divider, N=2-24) |
+| Cycle   | Internal clock generator (default 80 BPM) |
 
-Each mode tracks `last_input_state` to detect edges internally.
+Each mode has its own context struct for tracking state between updates.
 
 ### Mode
 
-Location: `src/state/mode.c`
+Location: `src/state/mode.c`, `include/core/states.h`
 
 Defines the mode enumeration and helper functions.
 
 ```c
 typedef enum {
-    MODE_GATE = 0,
-    MODE_PULSE = 1,
-    MODE_TOGGLE = 2,
-} CVMode;
+    MODE_GATE = 0,      // Output follows input
+    MODE_TRIGGER,       // Rising edge triggers fixed pulse
+    MODE_TOGGLE,        // Each press flips output state
+    MODE_DIVIDE,        // Output every N input pulses
+    MODE_CYCLE,         // Internal clock at configurable BPM
+    MODE_COUNT
+} ModeState;
 ```
 
-`cv_mode_get_next()` returns the next mode in cycle.
-`cv_mode_get_led_state()` returns LED configuration for the mode.
+Mode handlers are implemented in `src/modes/mode_handlers.c` using switch-based dispatch.
+Each mode has its own context struct; they share memory via a union since only one is active.
 
 ### IO Controller
 
@@ -309,6 +327,8 @@ The ATtiny85 has limited resources:
 Design decisions are documented in `docs/planning/decision-records/`:
 
 - [ADR-001](planning/decision-records/001-rev2-architecture.md): Rev2 hardware and firmware changes
+- [ADR-002](planning/decision-records/002-status-bitmasks.md): Status bitmasks instead of multiple bools
+- [ADR-003](planning/decision-records/003-fsm-architecture.md): Table-driven FSM architecture
 
 ## References
 

@@ -8,10 +8,12 @@ This project is designed as a reference for those learning synth/modular DIY and
 
 ## Features
 
-- **Multiple Modes:**
+- **Five Operating Modes:**
   - **Gate:** Output stays high while input is held
-  - **Pulse:** Rising edge triggers a fixed-duration pulse
+  - **Trigger:** Rising edge triggers a fixed-duration pulse (1-50ms)
   - **Toggle:** Each press flips the output state
+  - **Divide:** Clock divider - outputs every N inputs (2-24)
+  - **Cycle:** Internal clock generator (default 80 BPM)
 
 - **Persistent Settings:**
   Mode selection is saved to EEPROM and restored on power-up. Factory reset is available by holding both buttons for 3 seconds during startup.
@@ -26,7 +28,7 @@ This project is designed as a reference for those learning synth/modular DIY and
   Clean interface for hardware access, enabling comprehensive unit testing on the host machine.
 
 - **Unit Testing:**
-  69 tests using the Unity framework verify functionality without hardware.
+  133 tests using the Unity framework verify functionality without hardware.
 
 ## Hardware
 
@@ -34,8 +36,8 @@ This project is designed as a reference for those learning synth/modular DIY and
 
 | Resource | Size | Usage |
 |----------|------|-------|
-| Flash | 8 KB | ~3.2 KB used |
-| SRAM | 512 B | Stack and globals |
+| Flash | 8 KB | ~65% used |
+| SRAM | 512 B | ~22% used |
 | EEPROM | 512 B | Settings persistence |
 
 **Pin Assignment:**
@@ -57,13 +59,14 @@ The firmware is organized into modules:
 
 | Module | Purpose |
 |--------|---------|
+| `core/` | Application coordinator - manages FSM hierarchy, routes events |
+| `fsm/` | Generic table-driven FSM engine (reusable library) |
+| `events/` | Event processor - button gestures, CV edge detection |
+| `modes/` | Signal processing modes (Gate, Trigger, Toggle, Divide, Cycle) |
 | `hardware/` | HAL implementation (pin control, timers, EEPROM) |
 | `input/` | Button debouncing and edge detection |
-| `output/` | CV output behaviors (gate, pulse, toggle) |
-| `controller/` | Coordinates input, output, and LED indicators |
-| `state/` | Mode enumeration and transitions |
+| `output/` | CV output behaviors |
 | `app_init.c` | Startup sequence, settings validation, factory reset |
-| `utility/` | Delay routines |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed documentation including data flow diagrams, EEPROM layout, and extension guides.
 

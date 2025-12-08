@@ -2,7 +2,15 @@
 
 ## Status
 
-Proposed
+**Implemented** (via AP-001, AP-002, AP-003)
+
+> **Implementation Note:** This design was implemented with different naming conventions:
+> - `gatekeeper_fsm.*` → `coordinator.*` (in `src/core/`, `include/core/`)
+> - `gatekeeper_states.h` → `states.h` (in `include/core/`)
+> - Event processor → `src/events/events.c`
+> - Mode handlers → `src/modes/mode_handlers.c`
+>
+> See CLAUDE.md for current file locations.
 
 ## Summary
 

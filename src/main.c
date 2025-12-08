@@ -38,10 +38,6 @@ int main(void) {
             p_hal->clear_pin(p_hal->sig_out_pin);
             p_hal->clear_pin(p_hal->led_output_indicator_pin);
         }
-
-        // TODO: Update mode indicator LEDs based on current mode
-        // This will be enhanced in AP-004 (Neopixel) or kept simple with
-        // the existing two-LED binary encoding
     }
 
     return 0;
