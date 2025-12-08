@@ -1,5 +1,5 @@
-#ifndef HAL_H
-#define HAL_H
+#ifndef GK_HARDWARE_HAL_H
+#define GK_HARDWARE_HAL_H
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -27,6 +27,6 @@ uint32_t hal_millis(void);
 void hal_advance_time(uint32_t ms);
 void hal_reset_time(void);
 
-#endif
+#endif /* GK_HARDWARE_HAL_H */
 
 

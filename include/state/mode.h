@@ -1,5 +1,5 @@
-#ifndef CV_MODE_H
-#define CV_MODE_H
+#ifndef GK_STATE_MODE_H
+#define GK_STATE_MODE_H
 
 #include <stdbool.h>
 
@@ -25,4 +25,4 @@ CVMode cv_mode_get_next(CVMode mode);
 
 ModeLEDState cv_mode_get_led_state(CVMode mode);
 
-#endif
+#endif /* GK_STATE_MODE_H */

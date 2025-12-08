@@ -1,5 +1,5 @@
-#ifndef IO_CONTROLLER_H
-#define IO_CONTROLLER_H
+#ifndef GK_CONTROLLER_IO_CONTROLLER_H
+#define GK_CONTROLLER_IO_CONTROLLER_H
 
 #include "stdint.h"
 
@@ -20,4 +20,4 @@ void io_controller_init(IOController *io_controller, Button *button, CVOutput *c
 
 void io_controller_update(IOController *io_controller);
 
-#endif
+#endif /* GK_CONTROLLER_IO_CONTROLLER_H */

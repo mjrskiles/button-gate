@@ -1,5 +1,5 @@
-#ifndef TEST_MODE_H
-#define TEST_MODE_H
+#ifndef GK_TEST_STATE_MODE_H
+#define GK_TEST_STATE_MODE_H
 
 #include "unity.h"
 #include "unity_fixture.h"
@@ -72,4 +72,4 @@ void RunAllModeTests() {
     RUN_TEST_GROUP(ModeTests);
 }
 
-#endif // TEST_MODE_H
+#endif /* GK_TEST_STATE_MODE_H */

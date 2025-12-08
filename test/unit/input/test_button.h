@@ -1,5 +1,5 @@
-#ifndef TEST_BUTTON_H
-#define TEST_BUTTON_H
+#ifndef GK_TEST_INPUT_BUTTON_H
+#define GK_TEST_INPUT_BUTTON_H
 
 #include "unity.h"
 #include "unity_fixture.h"
@@ -490,4 +490,4 @@ void RunAllButtonTests() {
     RUN_TEST_GROUP(ButtonTests);
 }
 
-#endif // TEST_BUTTON_H
+#endif /* GK_TEST_INPUT_BUTTON_H */

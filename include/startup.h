@@ -1,5 +1,5 @@
-#ifndef BUTTONGATE_STARTUP_H
-#define BUTTONGATE_STARTUP_H
+#ifndef GK_STARTUP_H
+#define GK_STARTUP_H
 
 #include "hardware/hal_interface.h"
 #include "utility/delay.h"
@@ -14,4 +14,4 @@
 void run_startup_sequence(void);
 
 
-#endif // BUTTONGATE_STARTUP_H
+#endif /* GK_STARTUP_H */

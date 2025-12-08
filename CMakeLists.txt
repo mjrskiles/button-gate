@@ -24,8 +24,15 @@ endif()
 # Enable compile_commands.json generation
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Project name
-project(button-gate C)
+# Project configuration
+project(gatekeeper
+    VERSION 0.8.0
+    DESCRIPTION "Eurorack gate/trigger processor"
+    LANGUAGES C
+)
+
+# Display name for documentation (capitalized brand name)
+set(PROJECT_DISPLAY_NAME "Gatekeeper")
 
 # Include directories
 include_directories(include)

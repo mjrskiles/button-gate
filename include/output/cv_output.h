@@ -1,5 +1,5 @@
-#ifndef CV_OUTPUT_H
-#define CV_OUTPUT_H
+#ifndef GK_OUTPUT_CV_OUTPUT_H
+#define GK_OUTPUT_CV_OUTPUT_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -35,4 +35,4 @@ bool cv_output_update_pulse(CVOutput *cv_output, bool input_state);
 bool cv_output_update_toggle(CVOutput *cv_output, bool input_state);
 
 
-#endif
+#endif /* GK_OUTPUT_CV_OUTPUT_H */

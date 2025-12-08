@@ -10,7 +10,7 @@ Proposed
 
 ## Context
 
-The current Button Gate module (rev1) is a simple 5V digital gate output
+The current Gatekeeper module (rev1) is a simple 5V digital gate output
 controlled by a button or CV input. It supports three modes (Gate, Pulse,
 Toggle) selectable via a 5-tap + 1-second-hold sequence.
 

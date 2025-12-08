@@ -1,5 +1,5 @@
-#ifndef TEST_CONTROLLER_H
-#define TEST_CONTROLLER_H
+#ifndef GK_TEST_CONTROLLER_H
+#define GK_TEST_CONTROLLER_H
 
 #include "unity.h"
 #include "unity_fixture.h"
@@ -336,4 +336,4 @@ void RunAllIOControllerTests() {
     RUN_TEST_GROUP(IOControllerTests);
 }
 
-#endif // TEST_CONTROLLER_H
+#endif /* GK_TEST_CONTROLLER_H */

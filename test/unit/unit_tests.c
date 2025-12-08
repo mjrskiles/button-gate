@@ -15,7 +15,7 @@ int main(void) {
     
     // Setting the -v flag to print the test results
     const char* argv[] = {
-        "button_gate_tests",  
+        "gatekeeper_tests",
         "-v",
     };
     int argc = sizeof(argv) / sizeof(argv[0]);

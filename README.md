@@ -1,6 +1,6 @@
-# Button Gate
+# Gatekeeper
 
-Button Gate is a 1U Eurorack module with configurable actions and CV response. This repo is intended as an example project for reference by those seeking to learn synth/modular DIY.
+Gatekeeper is a 1U Eurorack module with configurable actions and CV response. This repo is intended as an example project for reference by those seeking to learn synth/modular DIY.
 
 ## Features
 
@@ -93,7 +93,7 @@ To build the unit tests (which run on your host machine and omit AVR-specific co
 
 3. **Run the tests:**
    ```bash
-   ./test/unit/button-gate_unit_tests
+   ./test/unit/gatekeeper_unit_tests
    ```
 
 ## Flashing the Microcontroller

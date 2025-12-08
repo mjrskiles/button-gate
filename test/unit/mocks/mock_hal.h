@@ -1,5 +1,5 @@
-#ifndef MOCK_HAL_H
-#define MOCK_HAL_H
+#ifndef GK_TEST_MOCKS_MOCK_HAL_H
+#define GK_TEST_MOCKS_MOCK_HAL_H
 
 #include "hardware/hal_interface.h"
 #include <stdint.h>
@@ -66,4 +66,4 @@ void advance_mock_time(uint32_t ms);
  */
 void reset_mock_time(void);
 
-#endif // MOCK_HAL_H
+#endif /* GK_TEST_MOCKS_MOCK_HAL_H */

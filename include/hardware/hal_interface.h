@@ -1,5 +1,5 @@
-#ifndef HAL_INTERFACE_H
-#define HAL_INTERFACE_H
+#ifndef GK_HARDWARE_HAL_INTERFACE_H
+#define GK_HARDWARE_HAL_INTERFACE_H
 
 #include <stdint.h>
 
@@ -50,4 +50,4 @@ typedef struct HalInterface {
 // This pointer defaults to the production HAL, but tests can replace it with a mock.
 extern HalInterface *p_hal;
 
-#endif // HAL_INTERFACE_H
+#endif /* GK_HARDWARE_HAL_INTERFACE_H */

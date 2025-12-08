@@ -1,5 +1,5 @@
-#ifndef BUTTONGATE_INPUT_BUTTON_H
-#define BUTTONGATE_INPUT_BUTTON_H
+#ifndef GK_INPUT_BUTTON_H
+#define GK_INPUT_BUTTON_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -57,4 +57,4 @@ bool button_has_rising_edge(Button *button);
 bool button_has_falling_edge(Button *button);
 
 
-#endif // BUTTONGATE_INPUT_BUTTON_H
+#endif /* GK_INPUT_BUTTON_H */

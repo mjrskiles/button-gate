@@ -1,11 +1,11 @@
 # Architecture
 
-This document describes the firmware architecture for Button Gate, a
+This document describes the firmware architecture for Gatekeeper, a
 Eurorack utility module built on the ATtiny85 microcontroller.
 
 ## Overview
 
-Button Gate is a digital gate/trigger processor. It reads a button or CV
+Gatekeeper is a digital gate/trigger processor. It reads a button or CV
 input and produces a 5V digital output. Multiple operating modes transform
 the input signal in different ways.
 
@@ -36,7 +36,7 @@ Mode LEDs use 2-bit binary encoding: Gate=10, Pulse=01, Toggle=11.
 
 ### Rev2 (Planned)
 
-See [ADR-001](adr/001-rev2-architecture.md) for rationale.
+See [ADR-001](planning/decision-records/001-rev2-architecture.md) for rationale.
 
 **Target**: ATtiny85 @ 8 MHz internal oscillator
 
@@ -202,7 +202,7 @@ provides:
 mkdir build_tests && cd build_tests
 cmake -DBUILD_TESTS=ON ..
 cmake --build .
-./test/unit/button-gate_unit_tests
+./test/unit/gatekeeper_unit_tests
 ```
 
 **Test organization**: Each module has a corresponding test file in
@@ -220,7 +220,7 @@ cmake ..
 cmake --build .
 ```
 
-Produces `button-gate.hex` for flashing.
+Produces `gatekeeper.hex` for flashing.
 
 **Test build**:
 ```sh
@@ -275,9 +275,9 @@ The ATtiny85 has limited resources:
 
 ## Architecture Decisions
 
-Design decisions are documented in `docs/adr/`:
+Design decisions are documented in `docs/planning/decision-records/`:
 
-- [ADR-001](adr/001-rev2-architecture.md): Rev2 hardware and firmware changes
+- [ADR-001](planning/decision-records/001-rev2-architecture.md): Rev2 hardware and firmware changes
 
 ## References
 

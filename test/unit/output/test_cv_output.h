@@ -1,5 +1,5 @@
-#ifndef TEST_CV_OUTPUT_H
-#define TEST_CV_OUTPUT_H
+#ifndef GK_TEST_OUTPUT_CV_OUTPUT_H
+#define GK_TEST_OUTPUT_CV_OUTPUT_H
 
 #include "unity.h"
 #include "unity_fixture.h"
@@ -193,4 +193,4 @@ void RunAllCVOutputTests() {
     RUN_TEST_GROUP(CVOutputTests);
 }
 
-#endif // TEST_CV_OUTPUT_H
+#endif /* GK_TEST_OUTPUT_CV_OUTPUT_H */

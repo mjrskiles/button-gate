@@ -1,5 +1,5 @@
-#ifndef UTILITY_DELAY_H
-#define UTILITY_DELAY_H
+#ifndef GK_UTILITY_DELAY_H
+#define GK_UTILITY_DELAY_H
 
 #include <stdint.h>
 
@@ -7,4 +7,4 @@
 
 void util_delay_ms(uint32_t ms);
 
-#endif // UTILITY_DELAY_H
+#endif /* GK_UTILITY_DELAY_H */

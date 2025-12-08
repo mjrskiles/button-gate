@@ -36,8 +36,8 @@
  * - p_hal->reset_time()     - Reset mock timer to 0
  */
 
-#ifndef TEST_EXAMPLE_H
-#define TEST_EXAMPLE_H
+#ifndef GK_TEST_EXAMPLE_H
+#define GK_TEST_EXAMPLE_H
 
 #include "unity.h"
 #include "unity_fixture.h"
@@ -73,4 +73,4 @@ void RunAllExampleTests(void) {
     RUN_TEST_GROUP(ExampleTests);
 }
 
-#endif /* TEST_EXAMPLE_H */
+#endif /* GK_TEST_EXAMPLE_H */
