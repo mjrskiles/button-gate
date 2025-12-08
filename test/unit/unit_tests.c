@@ -9,6 +9,8 @@
 #include "controller/test_controller.h"
 #include "app_init/test_app_init.h"
 #include "utility/test_struct_sizes.h"
+#include "fsm/test_fsm.h"
+#include "fsm/test_events.h"
 
 void run_all_tests(void);
 
@@ -34,6 +36,8 @@ void run_all_tests(void) {
     RunAllIOControllerTests();
     RunAllAppInitTests();
     RunAllStructSizeTests();
+    RunAllFSMTests();
+    RunAllEventProcessorTests();
 }
 
 /**

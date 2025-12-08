@@ -482,18 +482,45 @@ bool neopixel_update(void) {
 }
 ```
 
-#### 3. FSM Integration
+#### 3. FSM and Mode Handler Integration
 
-The LED feedback controller is called from FSM entry/exit actions and the main update loop:
+LED feedback integrates with both the FSM (for menu state) and mode handlers (for perform state). See FDP-004 for the full ModeHandler interface.
+
+**Perform state**: Each mode handler provides its own LED feedback via `get_led_feedback()`:
 
 ```c
-// In gatekeeper_fsm.c
+// In main loop during Perform state
+void gatekeeper_update_perform(GatekeeperFSM *gk) {
+    // Process mode handler
+    ModeHandler *handler = get_current_handler(gk);
+    handler->process(gk->mode_ctx, input, &output);
 
-static void on_perform_enter(void) {
-    uint8_t mode = fsm_get_state(&gk_fsm.mode_fsm);
-    led_feedback_show_mode(mode);
+    // Get mode-specific LED feedback
+    LEDFeedback fb;
+    handler->get_led_feedback(gk->mode_ctx, &fb);
+
+    // Apply to LEDs
+    neopixel_set_color(LED_X, fb.led_x_color);
+    neopixel_set_state(fb.led_y_state, fb.led_y_color);
+
+    // Run animations
+    neopixel_update();
 }
+```
 
+**Mode-specific LED Y behavior**:
+
+| Mode | LED Y Behavior |
+|------|----------------|
+| Gate | Mirrors CV output state (on/off) |
+| Trigger | Flash on each pulse trigger |
+| Toggle | Solid when latched high |
+| Divide | Blink on divided output (every Nth beat) |
+| Cycle | Glow/pulse with LFO phase |
+
+**Menu state**: FSM entry/exit actions control LEDs directly:
+
+```c
 static void on_menu_enter(void) {
     uint8_t page = fsm_get_state(&gk_fsm.menu_fsm);
     led_feedback_show_page(page);
@@ -509,21 +536,8 @@ static void action_next_page(void) {
 
 static void action_next_selection(void) {
     uint8_t page = fsm_get_state(&gk_fsm.menu_fsm);
-    uint8_t value = cycle_page_value(page);  // Increment and wrap
+    uint8_t value = cycle_page_value(page);
     led_feedback_show_value(value);
-}
-
-// In main loop
-void gatekeeper_fsm_update(GatekeeperFSM *gk) {
-    // ... event processing ...
-
-    // Update LED animations
-    led_feedback_update();
-
-    // Update output indicator (LED Y shows output state in Perform mode)
-    if (fsm_get_state(&gk->top_fsm) == TOP_PERFORM) {
-        led_feedback_show_output(gk->cv_output_state);
-    }
 }
 ```
 

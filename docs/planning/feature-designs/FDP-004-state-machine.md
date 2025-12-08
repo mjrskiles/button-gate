@@ -707,6 +707,18 @@ The FSM owns state and configuration but delegates signal processing to pure mod
 
 ```c
 /**
+ * LED feedback state returned by mode handlers
+ *
+ * Each mode can specify what LED X and Y should display
+ * based on the mode's internal state.
+ */
+typedef struct {
+    Color led_x_color;      // Mode indicator color (or override)
+    LEDState led_y_state;   // LED Y state: off/on/blink/glow
+    Color led_y_color;      // LED Y color
+} LEDFeedback;
+
+/**
  * Mode handler interface
  *
  * Handlers are pure functions that process input→output.
@@ -733,6 +745,14 @@ typedef struct {
      * Clean up mode-specific state.
      */
     void (*on_deactivate)(void *ctx);
+
+    /**
+     * Get LED feedback for current mode state.
+     * Called every update cycle to determine LED display.
+     * @param ctx      Mode-specific context
+     * @param feedback Pointer to LEDFeedback struct to fill
+     */
+    void (*get_led_feedback)(void *ctx, LEDFeedback *feedback);
 } ModeHandler;
 
 // Handler instances (defined in mode_handlers.c)
@@ -757,6 +777,52 @@ static const ModeHandler* const mode_handlers[] PROGMEM = {
 - Handlers are testable in isolation
 - Easy to add new modes (implement handler, add to table)
 - Clear separation of concerns
+
+**Mode-Specific LED Feedback:**
+
+Each mode handler provides LED feedback appropriate to its function:
+
+| Mode | LED X | LED Y |
+|------|-------|-------|
+| Gate | Green (mode color) | Mirrors CV output state |
+| Trigger | Orange | Flash on pulse trigger |
+| Toggle | Cyan | Solid when latched high |
+| Divide | Magenta | Blink on divided output (every Nth beat) |
+| Cycle | Yellow | Pulse with LFO/tempo phase |
+
+Example implementation for Divide mode:
+
+```c
+void divide_get_led_feedback(void *ctx, LEDFeedback *fb) {
+    DivideContext *div = (DivideContext *)ctx;
+
+    fb->led_x_color = COLOR_MODE_DIVIDE;
+
+    // Blink LED Y only on the divided output beat
+    if (div->output_triggered_this_cycle) {
+        fb->led_y_state = LED_STATE_ON;
+        fb->led_y_color = COLOR_VALUE_DEFAULT;
+    } else {
+        fb->led_y_state = LED_STATE_OFF;
+        fb->led_y_color = COLOR_OFF;
+    }
+}
+```
+
+The main loop queries the active handler for LED state each cycle:
+
+```c
+void gatekeeper_update(void) {
+    // ... process events, run mode handler ...
+
+    // Get LED feedback from active mode
+    LEDFeedback fb;
+    current_handler->get_led_feedback(mode_ctx, &fb);
+
+    // Apply to LEDs (handled by led_feedback module)
+    led_feedback_apply(&fb);
+}
+```
 
 ### 4. CV Input Conditioning (Decided)
 

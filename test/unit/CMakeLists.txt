@@ -14,6 +14,8 @@ add_executable(${PROJECT_NAME}_unit_tests
     ${CMAKE_SOURCE_DIR}/src/state/mode.c
     ${CMAKE_SOURCE_DIR}/src/utility/delay.c
     ${CMAKE_SOURCE_DIR}/src/app_init.c
+    ${CMAKE_SOURCE_DIR}/src/fsm/fsm.c
+    ${CMAKE_SOURCE_DIR}/src/fsm/events.c
 )
 
 # Add test include directories
