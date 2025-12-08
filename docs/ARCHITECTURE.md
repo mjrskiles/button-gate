@@ -51,56 +51,6 @@ See [ADR-001](adr/001-rev2-architecture.md) for rationale.
 
 Output LED driven directly from buffered output circuit, not GPIO.
 
-## Directory Structure
-
-```
-button-gate/
-├── src/
-│   ├── main.c              # Entry point and main loop
-│   ├── startup.c           # Initialization sequence
-│   ├── hardware/
-│   │   └── hal.c           # Hardware abstraction (production)
-│   ├── input/
-│   │   └── button.c        # Button debouncing and edge detection
-│   ├── output/
-│   │   └── cv_output.c     # Output modes (gate, pulse, toggle)
-│   ├── controller/
-│   │   └── io_controller.c # Main application logic
-│   └── state/
-│       └── mode.c          # Mode definitions and transitions
-├── include/
-│   ├── hardware/
-│   │   ├── hal.h           # Pin definitions and constants
-│   │   └── hal_interface.h # HAL interface struct
-│   ├── input/
-│   │   └── button.h
-│   ├── output/
-│   │   └── cv_output.h
-│   ├── controller/
-│   │   └── io_controller.h
-│   └── state/
-│       └── mode.h
-├── test/
-│   └── unit/
-│       ├── mocks/
-│       │   └── mock_hal.c  # Test HAL implementation
-│       ├── input/
-│       │   └── test_button.h
-│       ├── output/
-│       │   └── test_cv_output.h
-│       ├── controller/
-│       │   └── test_controller.h
-│       ├── state/
-│       │   └── test_mode.h
-│       └── unit_tests.c    # Test runner
-├── external/
-│   └── Unity/              # Test framework (submodule)
-├── docs/
-│   ├── ARCHITECTURE.md     # This file
-│   └── adr/                # Architecture Decision Records
-└── CMakeLists.txt
-```
-
 ## Module Descriptions
 
 ### HAL (Hardware Abstraction Layer)

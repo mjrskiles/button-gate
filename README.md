@@ -1,6 +1,6 @@
 # Button Gate
 
-Button Gate is a firmware project for the ATtiny85 microcontroller that reads a debounced button input and controls a CV (control voltage) output using one of several modes: Gate, Pulse, and Toggle. The firmware supports a configuration action—triggered by a sequence of taps followed by a hold—which cycles through the available operating modes.
+Button Gate is a 1U Eurorack module with configurable actions and CV response. This repo is intended as an example project for reference by those seeking to learn synth/modular DIY.
 
 ## Features
 
