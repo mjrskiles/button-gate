@@ -1,27 +1,50 @@
 #include "fsm/fsm.h"
+#include "utility/progmem.h"
 #include <stddef.h>
 
 /**
- * Helper: Find state by ID in state array
+ * Helper: Read a State from PROGMEM into RAM buffer
  */
-static const State* find_state(const FSM *fsm, uint8_t state_id) {
-    if (!fsm || !fsm->states) return NULL;
+static void read_state(State *dest, const State *src) {
+    PROGMEM_READ_STRUCT(dest, src, sizeof(State));
+}
 
+/**
+ * Helper: Read a Transition from PROGMEM into RAM buffer
+ */
+static void read_transition(Transition *dest, const Transition *src) {
+    PROGMEM_READ_STRUCT(dest, src, sizeof(Transition));
+}
+
+/**
+ * Helper: Find state by ID in state array (PROGMEM-safe)
+ *
+ * Returns index of found state, or fsm->num_states if not found.
+ */
+static uint8_t find_state_index(const FSM *fsm, uint8_t state_id) {
+    if (!fsm || !fsm->states) return 0xFF;
+
+    State s;
     for (uint8_t i = 0; i < fsm->num_states; i++) {
-        if (fsm->states[i].id == state_id) {
-            return &fsm->states[i];
+        read_state(&s, &fsm->states[i]);
+        if (s.id == state_id) {
+            return i;
         }
     }
-    return NULL;
+    return 0xFF;  // Not found
 }
 
 /**
  * Helper: Call entry action for a state (if defined)
  */
 static void call_entry_action(const FSM *fsm, uint8_t state_id) {
-    const State *state = find_state(fsm, state_id);
-    if (state && state->on_enter) {
-        state->on_enter();
+    uint8_t idx = find_state_index(fsm, state_id);
+    if (idx == 0xFF) return;
+
+    State s;
+    read_state(&s, &fsm->states[idx]);
+    if (s.on_enter) {
+        s.on_enter();
     }
 }
 
@@ -29,9 +52,13 @@ static void call_entry_action(const FSM *fsm, uint8_t state_id) {
  * Helper: Call exit action for a state (if defined)
  */
 static void call_exit_action(const FSM *fsm, uint8_t state_id) {
-    const State *state = find_state(fsm, state_id);
-    if (state && state->on_exit) {
-        state->on_exit();
+    uint8_t idx = find_state_index(fsm, state_id);
+    if (idx == 0xFF) return;
+
+    State s;
+    read_state(&s, &fsm->states[idx]);
+    if (s.on_exit) {
+        s.on_exit();
     }
 }
 
@@ -60,19 +87,20 @@ bool fsm_process_event(FSM *fsm, uint8_t event) {
     if (!fsm || !fsm->active || !fsm->transitions) return false;
 
     // Search transition table for matching (current_state, event)
+    Transition t;
     for (uint8_t i = 0; i < fsm->num_transitions; i++) {
-        const Transition *trans = &fsm->transitions[i];
+        read_transition(&t, &fsm->transitions[i]);
 
         // Check if transition matches
-        bool state_matches = (trans->from_state == fsm->current_state) ||
-                            (trans->from_state == FSM_ANY_STATE);
-        bool event_matches = (trans->event == event);
+        bool state_matches = (t.from_state == fsm->current_state) ||
+                            (t.from_state == FSM_ANY_STATE);
+        bool event_matches = (t.event == event);
 
         if (state_matches && event_matches) {
             // Handle FSM_NO_TRANSITION (action only, no state change)
-            if (trans->to_state == FSM_NO_TRANSITION) {
-                if (trans->action) {
-                    trans->action();
+            if (t.to_state == FSM_NO_TRANSITION) {
+                if (t.action) {
+                    t.action();
                 }
                 return false;  // No state change
             }
@@ -82,12 +110,12 @@ bool fsm_process_event(FSM *fsm, uint8_t event) {
             call_exit_action(fsm, fsm->current_state);
 
             // 2. Execute transition action
-            if (trans->action) {
-                trans->action();
+            if (t.action) {
+                t.action();
             }
 
             // 3. Update state
-            fsm->current_state = trans->to_state;
+            fsm->current_state = t.to_state;
 
             // 4. Enter new state
             call_entry_action(fsm, fsm->current_state);
@@ -102,9 +130,13 @@ bool fsm_process_event(FSM *fsm, uint8_t event) {
 void fsm_update(FSM *fsm) {
     if (!fsm || !fsm->active) return;
 
-    const State *state = find_state(fsm, fsm->current_state);
-    if (state && state->on_update) {
-        state->on_update();
+    uint8_t idx = find_state_index(fsm, fsm->current_state);
+    if (idx == 0xFF) return;
+
+    State s;
+    read_state(&s, &fsm->states[idx]);
+    if (s.on_update) {
+        s.on_update();
     }
 }
 

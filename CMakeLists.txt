@@ -1,22 +1,45 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Find required packages
-find_program(AVR_CC avr-gcc REQUIRED)
-find_program(AVR_OBJCOPY avr-objcopy REQUIRED)
-find_program(AVR_SIZE_TOOL avr-size REQUIRED)
-find_program(AVR_OBJDUMP avr-objdump REQUIRED)
-find_program(AVR_STRIP avr-strip REQUIRED)
-find_program(AVRDUDE avrdude REQUIRED)
-
+# Build options
 option(BUILD_TESTS "Build test suite" OFF)
+option(BUILD_SIM "Build x86 simulator" OFF)
+option(SIZE_REPORT "Run size analysis after build (requires bc)" ON)
 
 # Set compilers BEFORE project() command
-if(DEFINED BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS OR BUILD_SIM)
+    # Test/Sim build: use host GCC, no AVR toolchain needed
     set(CMAKE_C_COMPILER "/usr/bin/gcc")
     set(CMAKE_ASM_COMPILER "/usr/bin/gcc")
-    add_compile_definitions(TEST_BUILD)
+    if(BUILD_TESTS)
+        add_compile_definitions(TEST_BUILD)
+    endif()
+    if(BUILD_SIM)
+        add_compile_definitions(SIM_BUILD)
+    endif()
 else()
-    # AVR Compiler flags
+    # Firmware build: require AVR toolchain
+    find_program(AVR_CC avr-gcc REQUIRED)
+    find_program(AVR_OBJCOPY avr-objcopy REQUIRED)
+    find_program(AVR_SIZE_TOOL avr-size REQUIRED)
+    find_program(AVR_STRIP avr-strip REQUIRED)
+
+    # Optional: avr-objdump (for disassembly)
+    find_program(AVR_OBJDUMP avr-objdump)
+
+    # Optional: avrdude (only needed for flashing)
+    find_program(AVRDUDE avrdude)
+    if(NOT AVRDUDE)
+        message(STATUS "avrdude not found - flash/fuse targets will not be available")
+    endif()
+
+    # Optional: size report dependencies
+    find_program(BC_TOOL bc)
+    if(SIZE_REPORT AND NOT BC_TOOL)
+        message(WARNING "bc not found - size report disabled. Install with: sudo apt install bc")
+        message(WARNING "Or build with: cmake -DSIZE_REPORT=OFF ..")
+        set(SIZE_REPORT OFF)
+    endif()
+
     set(CMAKE_C_COMPILER ${AVR_CC})
     set(CMAKE_ASM_COMPILER ${AVR_CC})
 endif()
@@ -37,7 +60,7 @@ set(PROJECT_DISPLAY_NAME "Gatekeeper")
 # Include directories
 include_directories(include)
 
-if(DEFINED BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
     # Test build configuration
     message(STATUS "Building tests")
 
@@ -53,6 +76,10 @@ if(DEFINED BUILD_TESTS AND BUILD_TESTS)
     set(UNITY_EXTENSION_FIXTURE ON)
     add_subdirectory(external/Unity)
     add_subdirectory(test/unit)
+elseif(BUILD_SIM)
+    # Simulator build configuration
+    message(STATUS "Building x86 simulator")
+    add_subdirectory(sim)
 else()
     message(STATUS "Building application")
 
@@ -81,25 +108,36 @@ else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${AVR_STRIP} --strip-debug ${PROJECT_NAME}
         COMMAND ${AVR_OBJCOPY} -O ihex -R .eeprom ${PROJECT_NAME} ${PROJECT_NAME}.hex
-        COMMAND ${AVR_SIZE_TOOL} ${PROJECT_NAME}
     )
 
-    # Flash target
-    add_custom_target(flash
-        COMMAND ${AVRDUDE} -p ${MCU} -c ${PROGRAMMER} -P ${PROGRAMMER_PORT} -b 115200 
-                -U flash:w:${PROJECT_NAME}.hex:i
-        DEPENDS ${PROJECT_NAME}
-    )
+    # Optional: run size analysis
+    if(SIZE_REPORT)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_SOURCE_DIR}/scripts/size_report.sh ${PROJECT_NAME} CMakeFiles/${PROJECT_NAME}.dir/src
+        )
+    else()
+        # Minimal size output when full report is disabled
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${AVR_SIZE_TOOL} --format=avr --mcu=${MCU} ${PROJECT_NAME}
+        )
+    endif()
 
-    # Fuse targets (using safe default values)
-    add_custom_target(fuses
-        COMMAND ${AVRDUDE} -p ${MCU} -c ${PROGRAMMER} -P ${PROGRAMMER_PORT} -b 115200 
-                -U lfuse:w:0x62:m -U hfuse:w:0xDF:m
-    )
+    # Flash/fuse targets (only if avrdude is available)
+    if(AVRDUDE)
+        add_custom_target(flash
+            COMMAND ${AVRDUDE} -p ${MCU} -c ${PROGRAMMER} -P ${PROGRAMMER_PORT} -b 115200
+                    -U flash:w:${PROJECT_NAME}.hex:i
+            DEPENDS ${PROJECT_NAME}
+        )
 
-    # Read fuses target
-    add_custom_target(read_fuses
-        COMMAND ${AVRDUDE} -p ${MCU} -c ${PROGRAMMER} -P ${PROGRAMMER_PORT} -b 115200 
-                -U lfuse:r:-:h -U hfuse:r:-:h
-    )
+        add_custom_target(fuses
+            COMMAND ${AVRDUDE} -p ${MCU} -c ${PROGRAMMER} -P ${PROGRAMMER_PORT} -b 115200
+                    -U lfuse:w:0x62:m -U hfuse:w:0xDF:m
+        )
+
+        add_custom_target(read_fuses
+            COMMAND ${AVRDUDE} -p ${MCU} -c ${PROGRAMMER} -P ${PROGRAMMER_PORT} -b 115200
+                    -U lfuse:r:-:h -U hfuse:r:-:h
+        )
+    endif()
 endif()

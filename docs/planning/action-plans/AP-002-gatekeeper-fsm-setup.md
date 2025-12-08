@@ -1,6 +1,6 @@
 # AP-002: Gatekeeper FSM Setup
 
-**Status: Planned**
+**Status: Complete**
 
 ## Overview
 
@@ -214,13 +214,13 @@ if (fsm_get_state(&gk->top_fsm) == TOP_MENU) {
 
 ## Success Criteria
 
-- [ ] Top-level FSM switches between Perform and Menu
-- [ ] Mode FSM cycles through all 5 modes
-- [ ] Menu FSM navigates through all pages
-- [ ] Menu timeout triggers exit
-- [ ] Context-aware menu entry works
-- [ ] All existing tests still pass
-- [ ] New integration tests pass
+- [x] Top-level FSM switches between Perform and Menu
+- [x] Mode FSM cycles through all 5 modes
+- [x] Menu FSM navigates through all pages
+- [x] Menu timeout triggers exit
+- [x] Context-aware menu entry works
+- [x] All existing tests still pass (112 tests)
+- [x] Simulator works with FSM-based main loop
 
 ## Dependencies
 

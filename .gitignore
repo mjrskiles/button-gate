@@ -8,8 +8,10 @@ build/
 .cache/
 .cache
 build_tests/
+build*/
 
-.claude/temp/
+CLAUDE.md
+.claude/
 .cursorrules
 .vscode
 .continuity

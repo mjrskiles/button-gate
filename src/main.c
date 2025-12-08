@@ -1,34 +1,47 @@
 #include <avr/io.h>
 #include "app_init.h"
 #include "hardware/hal_interface.h"
-#include "controller/io_controller.h"
+#include "core/coordinator.h"
+
+static Coordinator coordinator;
+static AppSettings settings;
 
 int main(void) {
     // Initialize hardware
     p_hal->init();
 
     // Run app initialization - handles factory reset detection and settings loading
-    AppSettings settings;
     AppInitResult init_result = app_init_run(&settings);
+    (void)init_result;  // Could log or indicate via LED
 
-    // TODO: Pass settings.mode to io_controller when it supports initial mode
-    (void)init_result;  // Unused for now
+    // Initialize coordinator
+    coordinator_init(&coordinator, &settings);
 
-    // Initialize button (primary button only for now)
-    Button button1;
-    button_init(&button1, p_hal->button_a_pin);
+    // Restore mode from saved settings
+    if (settings.mode < MODE_COUNT) {
+        coordinator_set_mode(&coordinator, (ModeState)settings.mode);
+    }
 
-    // Initialize CV output
-    CVOutput cv_output;
-    cv_output_init(&cv_output, p_hal->sig_out_pin);
-
-    // Initialize IO controller
-    IOController io_controller;
-    io_controller_init(&io_controller, &button1, &cv_output, p_hal->led_output_indicator_pin);
+    // Start coordinator
+    coordinator_start(&coordinator);
 
     // Main loop
     while (1) {
-        io_controller_update(&io_controller);
+        // Update coordinator (processes inputs, runs mode handlers)
+        coordinator_update(&coordinator);
+
+        // Update output pin based on coordinator output state
+        if (coordinator_get_output(&coordinator)) {
+            p_hal->set_pin(p_hal->sig_out_pin);
+            p_hal->set_pin(p_hal->led_output_indicator_pin);
+        } else {
+            p_hal->clear_pin(p_hal->sig_out_pin);
+            p_hal->clear_pin(p_hal->led_output_indicator_pin);
+        }
+
+        // TODO: Update mode indicator LEDs based on current mode
+        // This will be enhanced in AP-004 (Neopixel) or kept simple with
+        // the existing two-LED binary encoding
     }
 
     return 0;

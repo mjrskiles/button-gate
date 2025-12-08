@@ -44,14 +44,14 @@ static void reset_complete_feedback(void) {
  * Double-blink pattern on output LED.
  */
 static void defaults_feedback(void) {
-    for (uint8_t i = 0; i < 2; i++) {
+    for (uint8_t i = 0; i < DEFAULTS_BLINK_COUNT; i++) {
         p_hal->set_pin(p_hal->led_output_indicator_pin);
         util_delay_ms(100);
         p_hal->clear_pin(p_hal->led_output_indicator_pin);
         util_delay_ms(100);
     }
     util_delay_ms(200);
-    for (uint8_t i = 0; i < 2; i++) {
+    for (uint8_t i = 0; i < DEFAULTS_BLINK_COUNT; i++) {
         p_hal->set_pin(p_hal->led_output_indicator_pin);
         util_delay_ms(100);
         p_hal->clear_pin(p_hal->led_output_indicator_pin);
@@ -73,6 +73,16 @@ void app_init_get_defaults(AppSettings *settings) {
 }
 
 bool app_init_check_factory_reset(void) {
+    // Sanity check: verify timer is actually advancing.
+    // If Timer0 ISR isn't running, millis() won't increment and we'd infinite-loop.
+    uint32_t t1 = p_hal->millis();
+    util_delay_ms(10);
+    uint32_t t2 = p_hal->millis();
+    if (t2 <= t1) {
+        // Timer is not advancing - abort to avoid infinite loop
+        return false;
+    }
+
     // Check if both buttons are currently pressed
     if (!p_hal->read_pin(p_hal->button_a_pin) ||
         !p_hal->read_pin(p_hal->button_b_pin)) {
@@ -82,8 +92,12 @@ bool app_init_check_factory_reset(void) {
     // Both pressed - start counting with visual feedback
     uint32_t start_time = p_hal->millis();
     uint32_t last_blink = start_time;
+    uint16_t iterations = 0;
 
-    while ((p_hal->millis() - start_time) < APP_INIT_RESET_HOLD_MS) {
+    // Loop with both time-based and iteration-based exit conditions.
+    // Iteration limit provides defense against timer failure.
+    while ((p_hal->millis() - start_time) < APP_INIT_RESET_HOLD_MS &&
+           iterations < APP_INIT_RESET_MAX_ITERATIONS) {
         // Blink LEDs for feedback
         if ((p_hal->millis() - last_blink) >= APP_INIT_RESET_BLINK_MS) {
             reset_feedback_tick();
@@ -101,6 +115,7 @@ bool app_init_check_factory_reset(void) {
 
         // Small delay to avoid busy-waiting too hard
         util_delay_ms(APP_INIT_RESET_POLL_MS);
+        iterations++;
     }
 
     // Held long enough - show confirmation
@@ -181,6 +196,20 @@ AppInitResult app_init_run(AppSettings *settings) {
         app_init_clear_eeprom();
         app_init_get_defaults(settings);
         app_init_save_settings(settings);
+
+        // Verify EEPROM write succeeded by reading back magic number.
+        // If verification fails, we still continue with defaults in RAM,
+        // but next boot will also use defaults (which is correct behavior).
+        uint16_t verify_magic = p_hal->eeprom_read_word(EEPROM_MAGIC_ADDR);
+        if (verify_magic != EEPROM_MAGIC_VALUE) {
+            // EEPROM write failed - signal error with rapid blink
+            for (uint8_t i = 0; i < 10; i++) {
+                p_hal->toggle_pin(p_hal->led_output_indicator_pin);
+                util_delay_ms(50);
+            }
+            p_hal->clear_pin(p_hal->led_output_indicator_pin);
+        }
+
         return APP_INIT_OK_FACTORY_RESET;
     }
 

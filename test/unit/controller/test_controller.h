@@ -222,19 +222,19 @@ TEST(IOControllerTests, TestCVOutputPinFollowsState) {
 // P3: Edge case tests
 
 TEST(IOControllerTests, TestCompleteModeCycle) {
-    // Test full cycle: Gate -> Pulse -> Toggle -> Gate
+    // Test full cycle through all 5 modes: Gate -> Trigger -> Toggle -> Divide -> Cycle -> Gate
     TEST_ASSERT_EQUAL(MODE_GATE, io_controller.mode);
 
-    // Gate -> Pulse
+    // Gate -> Trigger
     STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
-    TEST_ASSERT_EQUAL(MODE_PULSE, io_controller.mode);
+    TEST_ASSERT_EQUAL(MODE_TRIGGER, io_controller.mode);
 
     // Clear ignore_pressed
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
 
-    // Pulse -> Toggle
+    // Trigger -> Toggle
     STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_TOGGLE, io_controller.mode);
@@ -243,7 +243,25 @@ TEST(IOControllerTests, TestCompleteModeCycle) {
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
 
-    // Toggle -> Gate (full cycle)
+    // Toggle -> Divide
+    STATUS_SET(button.status, BTN_CONFIG);
+    io_controller_update(&io_controller);
+    TEST_ASSERT_EQUAL(MODE_DIVIDE, io_controller.mode);
+
+    // Clear ignore_pressed
+    p_hal->clear_pin(button.pin);
+    io_controller_update(&io_controller);
+
+    // Divide -> Cycle
+    STATUS_SET(button.status, BTN_CONFIG);
+    io_controller_update(&io_controller);
+    TEST_ASSERT_EQUAL(MODE_CYCLE, io_controller.mode);
+
+    // Clear ignore_pressed
+    p_hal->clear_pin(button.pin);
+    io_controller_update(&io_controller);
+
+    // Cycle -> Gate (full cycle complete)
     STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_GATE, io_controller.mode);
@@ -255,13 +273,13 @@ TEST(IOControllerTests, TestCompleteModeCycle) {
 
 TEST(IOControllerTests, TestToggleModeMultiplePresses) {
     // Switch to toggle mode - need proper button press/release to clear ignore_pressed
-    // First mode change: Gate -> Pulse
+    // First mode change: Gate -> Trigger
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
     STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
-    TEST_ASSERT_EQUAL(MODE_PULSE, io_controller.mode);
+    TEST_ASSERT_EQUAL(MODE_TRIGGER, io_controller.mode);
 
     // Release to clear ignore_pressed
     p_hal->advance_time(100);
@@ -269,7 +287,7 @@ TEST(IOControllerTests, TestToggleModeMultiplePresses) {
     io_controller_update(&io_controller);
     TEST_ASSERT_FALSE(io_controller.ignore_pressed);
 
-    // Second mode change: Pulse -> Toggle
+    // Second mode change: Trigger -> Toggle
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);

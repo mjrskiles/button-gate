@@ -3,7 +3,7 @@
 
 #include "unity.h"
 #include "unity_fixture.h"
-#include "fsm/events.h"
+#include "events/events.h"
 
 static EventProcessor ep;
 static EventInput input;

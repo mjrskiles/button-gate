@@ -30,6 +30,12 @@
 #define APP_INIT_RESET_POLL_MS         50  // Polling interval during reset check
 #define APP_INIT_RESET_BLINK_MS       100  // LED blink rate during reset pending
 
+// Visual feedback constants
+#define DEFAULTS_BLINK_COUNT            2  // Number of blinks in defaults feedback pattern
+
+// Safety limits (defense against timer failure)
+#define APP_INIT_RESET_MAX_ITERATIONS   ((APP_INIT_RESET_HOLD_MS / APP_INIT_RESET_POLL_MS) + 20)
+
 // EEPROM layout
 #define EEPROM_MAGIC_ADDR           0x00    // 2 bytes: magic number
 #define EEPROM_SCHEMA_ADDR          0x02    // 1 byte: schema version

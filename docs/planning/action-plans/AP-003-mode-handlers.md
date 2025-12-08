@@ -1,6 +1,6 @@
 # AP-003: Mode Handlers
 
-**Status: Planned**
+**Status: Complete**
 
 ## Overview
 
@@ -375,14 +375,14 @@ const ModeHandler* get_mode_handler(uint8_t mode) {
 
 ## Success Criteria
 
-- [ ] All 5 handlers implemented
-- [ ] Gate mode passes input through
-- [ ] Trigger generates correct pulse duration
-- [ ] Toggle flips on rising edge
-- [ ] Divide counts correctly for all divisors
-- [ ] Cycle generates correct frequency
-- [ ] LED feedback correct for each mode
-- [ ] All tests pass
+- [x] All 5 handlers implemented
+- [x] Gate mode passes input through
+- [x] Trigger generates correct pulse duration
+- [x] Toggle flips on rising edge
+- [x] Divide counts correctly for all divisors
+- [x] Cycle generates correct frequency (80 BPM default)
+- [x] LED feedback correct for each mode
+- [x] All tests pass (133 total, 21 new for mode handlers)
 
 ## Dependencies
 

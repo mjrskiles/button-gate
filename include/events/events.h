@@ -1,5 +1,5 @@
-#ifndef GK_FSM_EVENTS_H
-#define GK_FSM_EVENTS_H
+#ifndef GK_EVENTS_H
+#define GK_EVENTS_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -7,7 +7,7 @@
 
 /**
  * @file events.h
- * @brief Event types and processor for Gatekeeper FSM
+ * @brief Event types and processor for Gatekeeper
  *
  * Transforms raw button/CV inputs into semantic events with proper
  * timing for press vs release, tap vs hold, and compound gestures.
@@ -176,4 +176,4 @@ bool event_processor_a_holding(const EventProcessor *ep);
  */
 bool event_processor_b_holding(const EventProcessor *ep);
 
-#endif /* GK_FSM_EVENTS_H */
+#endif /* GK_EVENTS_H */

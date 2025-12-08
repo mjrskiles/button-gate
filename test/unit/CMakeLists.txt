@@ -1,5 +1,5 @@
 # Collect test source files
-file(GLOB_RECURSE TEST_SOURCES 
+file(GLOB_RECURSE TEST_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/**/*.c"
 )
@@ -15,7 +15,9 @@ add_executable(${PROJECT_NAME}_unit_tests
     ${CMAKE_SOURCE_DIR}/src/utility/delay.c
     ${CMAKE_SOURCE_DIR}/src/app_init.c
     ${CMAKE_SOURCE_DIR}/src/fsm/fsm.c
-    ${CMAKE_SOURCE_DIR}/src/fsm/events.c
+    ${CMAKE_SOURCE_DIR}/src/events/events.c
+    ${CMAKE_SOURCE_DIR}/src/modes/mode_handlers.c
+    ${CMAKE_SOURCE_DIR}/src/core/coordinator.c
 )
 
 # Add test include directories

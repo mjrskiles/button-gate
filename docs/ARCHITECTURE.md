@@ -19,7 +19,7 @@ the input signal in different ways.
 
 ## Hardware
 
-**Target**: ATtiny85 @ 8 MHz internal oscillator
+**Target**: ATtiny85 @ 1 MHz (8 MHz internal oscillator with CKDIV8 fuse enabled)
 
 See [ADR-001](planning/decision-records/001-rev2-architecture.md) for design rationale.
 

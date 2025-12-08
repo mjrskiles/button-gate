@@ -1,4 +1,4 @@
-#include "fsm/events.h"
+#include "events/events.h"
 
 void event_processor_init(EventProcessor *ep) {
     if (!ep) return;

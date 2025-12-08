@@ -30,7 +30,7 @@ This project is designed as a reference for those learning synth/modular DIY and
 
 ## Hardware
 
-**Target:** ATtiny85 @ 8 MHz internal oscillator
+**Target:** ATtiny85 @ 1 MHz (8 MHz internal oscillator with CKDIV8 fuse enabled)
 
 | Resource | Size | Usage |
 |----------|------|-------|
@@ -71,23 +71,72 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed documentation incl
 
 ### Prerequisites
 
-- AVR-GCC toolchain (avr-gcc, avr-objcopy, avr-size)
+**Firmware build:**
+- AVR-GCC toolchain (`avr-gcc`, `avr-objcopy`, `avr-size`, `avr-strip`)
 - CMake 3.16+
-- avrdude (for flashing)
-- GCC (for unit tests)
+- Optional: `avrdude` (flashing), `bc` + `avr-nm` (size analysis)
+
+**Test/Simulator build** (no AVR toolchain needed):
+- GCC (host compiler)
+- CMake 3.16+
+
+Install on Debian/Ubuntu:
+```bash
+# Tests only
+sudo apt install build-essential cmake
+
+# Firmware (minimal)
+sudo apt install gcc-avr avr-libc cmake
+
+# Firmware (full: build + flash + analysis)
+sudo apt install gcc-avr avr-libc binutils-avr avrdude cmake bc
+```
 
 ### Quick Start
 
 ```bash
-# Build firmware
+# Build firmware (with size analysis)
 mkdir build && cd build
 cmake .. && make
+
+# Build firmware (minimal, no analysis dependencies)
+cmake -DSIZE_REPORT=OFF .. && make
 
 # Build and run tests
 mkdir build_tests && cd build_tests
 cmake -DBUILD_TESTS=ON .. && make
 ./test/unit/gatekeeper_unit_tests
+
+# Build and run x86 simulator
+mkdir build_sim && cd build_sim
+cmake -DBUILD_SIM=ON .. && make
+./sim/gatekeeper-sim
 ```
+
+The default build runs a post-build size analysis showing flash/RAM usage and largest symbols. If `bc` is not installed, the build will warn and fall back to basic `avr-size` output.
+
+### x86 Simulator
+
+The simulator runs the application logic on your host machine with an interactive terminal UI:
+
+```
+=== Gatekeeper Simulator ===              Time: 1234 ms
+
+  Output: [ HIGH ]
+
+  Button A: [HELD]    Button B: [ -- ]
+
+  [A] Button A    [B] Button B    [Q] Quit
+  [R] Reset time  [F] Fast/Realtime toggle
+
+Event Log:
+      0 ms  Simulator started
+   1000 ms  App initialized, mode=0
+   1200 ms  Button A pressed
+   1234 ms  Output -> HIGH
+```
+
+Use `--fast` for accelerated testing without real-time delays.
 
 ### Flashing
 
