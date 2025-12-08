@@ -19,26 +19,9 @@ the input signal in different ways.
 
 ## Hardware
 
-### Rev1 (Current)
-
-**Target**: ATtiny85 @ 1 MHz internal oscillator
-
-| Pin | Port | Function        |
-|-----|------|-----------------|
-| PB0 | 5    | Button input    |
-| PB1 | 6    | CV output       |
-| PB2 | 7    | Mode LED (top)  |
-| PB3 | 2    | Output LED      |
-| PB4 | 3    | Mode LED (bottom) |
-| PB5 | 1    | RESET           |
-
-Mode LEDs use 2-bit binary encoding: Gate=10, Pulse=01, Toggle=11.
-
-### Rev2 (Planned)
-
-See [ADR-001](planning/decision-records/001-rev2-architecture.md) for rationale.
-
 **Target**: ATtiny85 @ 8 MHz internal oscillator
+
+See [ADR-001](planning/decision-records/001-rev2-architecture.md) for design rationale.
 
 | Pin | Port | Function        |
 |-----|------|-----------------|
@@ -49,7 +32,7 @@ See [ADR-001](planning/decision-records/001-rev2-architecture.md) for rationale.
 | PB4 | 3    | Button B        |
 | PB5 | 1    | RESET           |
 
-Output LED driven directly from buffered output circuit, not GPIO.
+Output LED is driven directly from the buffered output circuit, not GPIO.
 
 ## Module Descriptions
 
@@ -62,16 +45,26 @@ pointer `p_hal` references the active implementation.
 
 ```c
 typedef struct {
-    uint8_t button_pin;
+    // Pin assignments
+    uint8_t button_a_pin;
+    uint8_t button_b_pin;
     uint8_t sig_out_pin;
     // ... other pins
 
+    // IO functions
     void (*init)(void);
     void (*set_pin)(uint8_t pin);
     void (*clear_pin)(uint8_t pin);
     void (*toggle_pin)(uint8_t pin);
     uint8_t (*read_pin)(uint8_t pin);
+
+    // Timer functions
     uint32_t (*millis)(void);
+    void (*delay_ms)(uint32_t ms);
+
+    // EEPROM functions
+    uint8_t (*eeprom_read_byte)(uint16_t addr);
+    void (*eeprom_write_byte)(uint16_t addr, uint8_t value);
     // ... other functions
 } HalInterface;
 
@@ -79,10 +72,46 @@ extern HalInterface *p_hal;
 ```
 
 Production code uses the real HAL. Tests swap in a mock HAL with virtual
-pins and controllable time.
+pins, controllable time, and simulated 512-byte EEPROM.
 
 **Timer**: Timer0 runs in CTC mode with prescaler 8, generating a 1ms
 interrupt. The `millis()` function returns elapsed time since startup.
+
+### App Initialization
+
+Location: `src/app_init.c`, `include/app_init.h`
+
+Handles startup tasks before entering the main application loop:
+
+1. **Factory Reset Detection**: If both buttons are held for 3 seconds,
+   EEPROM is cleared and defaults are restored
+2. **Settings Validation**: Loads and validates settings from EEPROM using
+   magic number, schema version, checksum, and range checks
+3. **Graceful Degradation**: Falls back to safe defaults on any validation
+   failure rather than halting
+
+**EEPROM Layout**:
+```
+0x00-0x01: Magic number (0x474B = "GK")
+0x02:      Schema version
+0x03-0x0A: AppSettings struct (8 bytes)
+0x10:      XOR checksum
+```
+
+**Initialization Sequence**:
+```
+Power On → HAL Init → Check Factory Reset → Load EEPROM
+                            ↓                    ↓
+                      (both buttons       (valid settings)
+                       held 3s)                  ↓
+                            ↓               Return APP_INIT_OK
+                      Clear EEPROM              or
+                      Write Defaults      APP_INIT_OK_DEFAULTS
+                            ↓
+                      Return APP_INIT_OK_FACTORY_RESET
+```
+
+See [FDP-001](planning/feature-designs/FDP-001-app-init.md) for detailed design.
 
 ### Button
 
@@ -96,7 +125,7 @@ Handles debouncing and edge detection for button input.
 - `falling_edge`: True for one cycle after release
 - `config_action`: True when config gesture detected
 
-**Config Action Detection** (Rev1):
+**Config Action Detection**:
 1. Count rising edges within 500ms windows
 2. After 5 taps, start hold timer
 3. If held for 1000ms, set `config_action` flag
@@ -162,7 +191,7 @@ from affecting the output.
 ## Data Flow
 
 ```
-Button Pin (PB0)
+Button A (PB2)
       │
       ▼
 ┌─────────────┐
@@ -185,7 +214,7 @@ Button Pin (PB0)
 └─────────────┘
       │
       ▼
-Output Pin (PB1)
+CV Output (PB1)
 ```
 
 ## Testing
@@ -195,6 +224,8 @@ provides:
 
 - Virtual pin state array (read/write any pin)
 - Virtual millisecond timer (`advance_mock_time()`)
+- Non-blocking delay (`mock_delay_ms()` advances time instantly)
+- Simulated 512-byte EEPROM (`mock_eeprom_clear()` resets to 0xFF)
 - Deterministic behavior for timing-dependent tests
 
 **Running tests**:

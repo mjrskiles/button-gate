@@ -5,6 +5,7 @@
 #include "unity_fixture.h"
 #include "input/button.h"
 #include "hardware/hal_interface.h"
+#include "utility/status.h"
 
 Button button;
 
@@ -23,31 +24,28 @@ TEST_TEAR_DOWN(ButtonTests) {
 TEST(ButtonTests, TestButtonInit) {
     TEST_ASSERT_EQUAL(true, button_init(&button, 2));
     TEST_ASSERT_EQUAL(2, button.pin);
-    TEST_ASSERT_EQUAL(false, button.pressed);
-    TEST_ASSERT_EQUAL(false, button.last_state);
-    TEST_ASSERT_EQUAL(false, button.rising_edge);
-    TEST_ASSERT_EQUAL(false, button.config_action);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_PRESSED));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_LAST));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_RISE));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_CONFIG));
     TEST_ASSERT_EQUAL(0, button.tap_count);
     TEST_ASSERT_EQUAL(0, button.last_rise_time);
     TEST_ASSERT_EQUAL(0, button.last_fall_time);
 }
 
 TEST(ButtonTests, TestButtonReset) {
-    button.pressed = true;
-    button.last_state = true;
-    button.rising_edge = true;
-    button.falling_edge = true;
+    STATUS_SET(button.status, BTN_PRESSED | BTN_LAST | BTN_RISE | BTN_FALL);
     button.tap_count = 3;
     button.last_rise_time = 1000;
     button.last_fall_time = 2000;
-    
+
     button_reset(&button);
-    
-    TEST_ASSERT_EQUAL(false, button.raw_state);
-    TEST_ASSERT_EQUAL(false, button.pressed);
-    TEST_ASSERT_EQUAL(false, button.last_state);
-    TEST_ASSERT_EQUAL(false, button.rising_edge);
-    TEST_ASSERT_EQUAL(false, button.falling_edge);
+
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_RAW));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_PRESSED));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_LAST));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_RISE));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_FALL));
     TEST_ASSERT_EQUAL(0, button.tap_count);
     TEST_ASSERT_EQUAL(0, button.last_rise_time);
     TEST_ASSERT_EQUAL(0, button.last_fall_time);
@@ -58,15 +56,15 @@ TEST(ButtonTests, TestButtonUpdate) {
     p_hal->set_pin(button.pin);
     p_hal->advance_time(100);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.rising_edge);
-    TEST_ASSERT_TRUE(button.pressed);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_RISE));
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_PRESSED));
+
     // Test falling edge
     p_hal->clear_pin(button.pin);
     p_hal->advance_time(100);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.falling_edge);
-    TEST_ASSERT_FALSE(button.pressed);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_FALL));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_PRESSED));
 }
 
 TEST(ButtonTests, TestButtonConfigAction) {
@@ -88,36 +86,36 @@ TEST(ButtonTests, TestButtonConfigAction) {
     p_hal->set_pin(button.pin);
     button_update(&button);
     TEST_ASSERT_EQUAL(5, button.tap_count);
-    TEST_ASSERT_TRUE(button.counting_hold);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_COUNTING));
 
     // Hold for required time
     p_hal->advance_time(HOLD_TIME_MS + 100);
     button_update(&button);
 
-    TEST_ASSERT_TRUE(button.config_action);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST(ButtonTests, TestButtonConsumeConfigAction) {
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     button_consume_config_action(&button);
-    TEST_ASSERT_FALSE(button.config_action);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST(ButtonTests, TestButtonHasRisingEdge) {
     p_hal->set_pin(button.pin);
     p_hal->advance_time(100);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.rising_edge);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_RISE));
+
     // Test debounce
     button_update(&button);
     p_hal->advance_time(100);
-    TEST_ASSERT_FALSE(button.rising_edge);
-    
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_RISE));
+
     p_hal->advance_time(EDGE_DEBOUNCE_MS + 1);
     button_update(&button);
     p_hal->advance_time(100);
-    TEST_ASSERT_FALSE(button.rising_edge);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_RISE));
 }
 
 TEST(ButtonTests, TestButtonHasFallingEdge) {
@@ -130,12 +128,12 @@ TEST(ButtonTests, TestButtonHasFallingEdge) {
     p_hal->clear_pin(button.pin);
     p_hal->advance_time(100);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.falling_edge);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_FALL));
 
     // Test debounce
     button_update(&button);
     p_hal->advance_time(100);
-    TEST_ASSERT_FALSE(button.falling_edge);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_FALL));
 }
 
 TEST(ButtonTests, TestConfigActionTapTimeoutResetsTapCount) {
@@ -189,7 +187,7 @@ TEST(ButtonTests, TestConfigActionFailsWhenTapsTooSlow) {
     p_hal->advance_time(HOLD_TIME_MS + 100);
     button_update(&button);
 
-    TEST_ASSERT_FALSE(button.config_action);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST(ButtonTests, TestConfigActionSucceedsWithFastTaps) {
@@ -213,12 +211,12 @@ TEST(ButtonTests, TestConfigActionSucceedsWithFastTaps) {
     p_hal->set_pin(button.pin);
     button_update(&button);
     TEST_ASSERT_EQUAL(5, button.tap_count);
-    TEST_ASSERT_TRUE(button.counting_hold);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_COUNTING));
 
     p_hal->advance_time(HOLD_TIME_MS + 100);
     button_update(&button);
 
-    TEST_ASSERT_TRUE(button.config_action);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST(ButtonTests, TestConfigActionFailsIfReleasedBeforeHold) {
@@ -240,7 +238,7 @@ TEST(ButtonTests, TestConfigActionFailsIfReleasedBeforeHold) {
     p_hal->set_pin(button.pin);
     button_update(&button);
     TEST_ASSERT_EQUAL(5, button.tap_count);
-    TEST_ASSERT_TRUE(button.counting_hold);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_COUNTING));
 
     // Release before hold time completes
     p_hal->advance_time(HOLD_TIME_MS / 2);
@@ -248,8 +246,8 @@ TEST(ButtonTests, TestConfigActionFailsIfReleasedBeforeHold) {
     button_update(&button);
 
     // Should NOT trigger config action
-    TEST_ASSERT_FALSE(button.config_action);
-    TEST_ASSERT_FALSE(button.counting_hold);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_CONFIG));
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_COUNTING));
 
     // Tap count should still be 5 (can retry)
     TEST_ASSERT_EQUAL(5, button.tap_count);
@@ -277,7 +275,7 @@ TEST(ButtonTests, TestHoldTriggersAtExactBoundary) {
     p_hal->advance_time(HOLD_TIME_MS);  // Exactly 1000ms
     button_update(&button);
 
-    TEST_ASSERT_TRUE(button.config_action);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST(ButtonTests, TestHoldDoesNotTriggerJustBeforeBoundary) {
@@ -300,7 +298,7 @@ TEST(ButtonTests, TestHoldDoesNotTriggerJustBeforeBoundary) {
     p_hal->advance_time(HOLD_TIME_MS - 1);  // 999ms
     button_update(&button);
 
-    TEST_ASSERT_FALSE(button.config_action);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST(ButtonTests, TestTapTimeoutAtExactBoundary) {
@@ -352,7 +350,7 @@ TEST(ButtonTests, TestDebounceBoundaryExact) {
     // First rising edge
     p_hal->set_pin(button.pin);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.rising_edge);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_RISE));
 
     // Release
     p_hal->clear_pin(button.pin);
@@ -362,7 +360,7 @@ TEST(ButtonTests, TestDebounceBoundaryExact) {
     p_hal->advance_time(EDGE_DEBOUNCE_MS);
     p_hal->set_pin(button.pin);
     button_update(&button);
-    TEST_ASSERT_FALSE(button.rising_edge);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_RISE));
 }
 
 TEST(ButtonTests, TestDebounceBoundaryJustAfter) {
@@ -371,7 +369,7 @@ TEST(ButtonTests, TestDebounceBoundaryJustAfter) {
     // First rising edge
     p_hal->set_pin(button.pin);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.rising_edge);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_RISE));
 
     // Release
     p_hal->clear_pin(button.pin);
@@ -381,7 +379,7 @@ TEST(ButtonTests, TestDebounceBoundaryJustAfter) {
     p_hal->advance_time(EDGE_DEBOUNCE_MS + 1);
     p_hal->set_pin(button.pin);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.rising_edge);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_RISE));
 }
 
 // P3: Edge case tests
@@ -392,8 +390,8 @@ TEST(ButtonTests, TestBounceNotDetectedAsMultipleRisingEdges) {
     // Press button
     p_hal->set_pin(button.pin);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.rising_edge);
-    TEST_ASSERT_TRUE(button.pressed);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_RISE));
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_PRESSED));
 
     // Simulate bounce: rapid release and re-press within debounce window
     // The first falling edge WILL be detected (debounce only prevents rapid re-triggers)
@@ -406,7 +404,7 @@ TEST(ButtonTests, TestBounceNotDetectedAsMultipleRisingEdges) {
     p_hal->advance_time(1);  // 2ms total, within 5ms debounce of last rising edge
     p_hal->set_pin(button.pin);
     button_update(&button);
-    TEST_ASSERT_FALSE(button.rising_edge);  // Should NOT detect - too soon after last rising edge
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_RISE));  // Should NOT detect - too soon after last rising edge
 
     // Wait past debounce, then release and re-press
     p_hal->advance_time(EDGE_DEBOUNCE_MS + 1);
@@ -415,7 +413,7 @@ TEST(ButtonTests, TestBounceNotDetectedAsMultipleRisingEdges) {
     p_hal->advance_time(1);
     p_hal->set_pin(button.pin);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.rising_edge);  // Now it SHOULD detect - debounce window passed
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_RISE));  // Now it SHOULD detect - debounce window passed
 }
 
 TEST(ButtonTests, TestConfigActionCanRetriggerAfterCompletion) {
@@ -434,7 +432,7 @@ TEST(ButtonTests, TestConfigActionCanRetriggerAfterCompletion) {
     button_update(&button);
     p_hal->advance_time(HOLD_TIME_MS);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.config_action);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_CONFIG));
 
     // Consume and release
     button_consume_config_action(&button);
@@ -459,7 +457,7 @@ TEST(ButtonTests, TestConfigActionCanRetriggerAfterCompletion) {
     button_update(&button);
     p_hal->advance_time(HOLD_TIME_MS);
     button_update(&button);
-    TEST_ASSERT_TRUE(button.config_action);
+    TEST_ASSERT_TRUE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST_GROUP_RUNNER(ButtonTests) {

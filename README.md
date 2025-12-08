@@ -1,144 +1,107 @@
 # Gatekeeper
 
-Gatekeeper is a 1U Eurorack module with configurable actions and CV response. This repo is intended as an example project for reference by those seeking to learn synth/modular DIY.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+A digital gate/trigger processor for Eurorack modular synthesizers. Press a button (or send a CV signal), get a configurable output: hold it, pulse it, or toggle it.
+
+This project is designed as a reference for those learning synth/modular DIY and embedded development on AVR microcontrollers.
 
 ## Features
 
-- **Multiple Modes:**  
-  - **Gate:** Output remains high as long as the button is pressed.
-  - **Pulse:** A fixed-duration high pulse is generated on the rising edge.
-  - **Toggle:** Each button press toggles the output state.
-- **Debounced Button Input:**  
+- **Multiple Modes:**
+  - **Gate:** Output stays high while input is held
+  - **Pulse:** Rising edge triggers a fixed-duration pulse
+  - **Toggle:** Each press flips the output state
+
+- **Persistent Settings:**
+  Mode selection is saved to EEPROM and restored on power-up. Factory reset is available by holding both buttons for 3 seconds during startup.
+
+- **Debounced Input:**
   Robust button state detection with rising and falling edge detection.
-- **Configuration Action:**  
+
+- **Configuration Action:**
   Change operating modes by tapping the button several times in quick succession and holding on the final tap.
-- **Hardware Abstraction Layer (HAL):**  
-  Provides a clean interface for managing I/O pins and timer-based delays.
-- **Modular Code Architecture:**  
-  The project separates concerns into modules for hardware, input, output, state management, and utility functions.
-- **Unit Testing:**  
-  Integrated unit tests using the Unity framework to verify functionality.
+
+- **Hardware Abstraction Layer (HAL):**
+  Clean interface for hardware access, enabling comprehensive unit testing on the host machine.
+
+- **Unit Testing:**
+  69 tests using the Unity framework verify functionality without hardware.
+
+## Hardware
+
+**Target:** ATtiny85 @ 8 MHz internal oscillator
+
+| Resource | Size | Usage |
+|----------|------|-------|
+| Flash | 8 KB | ~3.2 KB used |
+| SRAM | 512 B | Stack and globals |
+| EEPROM | 512 B | Settings persistence |
+
+**Pin Assignment:**
+
+| Pin | Function |
+|-----|----------|
+| PB0 | Neopixel data |
+| PB1 | CV output |
+| PB2 | Button A |
+| PB3 | CV input |
+| PB4 | Button B |
+| PB5 | RESET |
+
+Output LED is driven directly from the buffered output circuit, not GPIO.
 
 ## Code Architecture
 
-The project is organized into several directories:
+The firmware is organized into modules:
 
-- **hardware:**  
-  Contains the HAL implementation (pin control, timer initialization, and a millisecond counter).
+| Module | Purpose |
+|--------|---------|
+| `hardware/` | HAL implementation (pin control, timers, EEPROM) |
+| `input/` | Button debouncing and edge detection |
+| `output/` | CV output behaviors (gate, pulse, toggle) |
+| `controller/` | Coordinates input, output, and LED indicators |
+| `state/` | Mode enumeration and transitions |
+| `app_init.c` | Startup sequence, settings validation, factory reset |
+| `utility/` | Delay routines |
 
-- **input:**  
-  Implements button handling with filtering, edge detection, and config action detection.
-
-- **output:**  
-  Manages CV output behaviors including gate, pulse, and toggle updates.
-
-- **controller:**  
-  Ties the input and output modules together. The IO controller applies the selected mode logic, updates output functions, and drives LED indicators.
-
-- **state:**  
-  Manages application modes and facilitates switching between them (e.g., via the configuration action).
-
-- **utility:**  
-  Provides helper functions such as delay routines used during the startup sequence.
-
-- **test:**  
-  Contains unit tests (using Unity) to verify the functionality of individual modules.
-
-The `main.c` file sets up the HAL, runs a startup sequence (flashing the LEDs), initializes the button and output, and then continuously polls the IO controller to process input and update the output.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed documentation including data flow diagrams, EEPROM layout, and extension guides.
 
 ## Build Instructions
 
-This project uses CMake for its build system.
-
 ### Prerequisites
 
-- AVR-GCC toolchain (avr-gcc, avr-objcopy, avr-size, etc.)
-- CMake (version 3.16 or later)
+- AVR-GCC toolchain (avr-gcc, avr-objcopy, avr-size)
+- CMake 3.16+
 - avrdude (for flashing)
-- (Optional) GCC for building and running unit tests with the `TEST_BUILD` option
+- GCC (for unit tests)
 
-### Building the Application
+### Quick Start
 
-1. **Create and enter a build directory:**
-   ```bash
-   mkdir build && cd build
-   ```
+```bash
+# Build firmware
+mkdir build && cd build
+cmake .. && make
 
-2. **Configure the project:**
-   ```bash
-   cmake ..
-   ```
+# Build and run tests
+mkdir build_tests && cd build_tests
+cmake -DBUILD_TESTS=ON .. && make
+./test/unit/gatekeeper_unit_tests
+```
 
-3. **Build the project:**
-   ```bash
-   make
-   ```
+### Flashing
 
-This process compiles the firmware for the ATtiny85 and, as a post-build step, strips debug symbols and generates a HEX file.
+```bash
+make flash        # Program firmware
+make fuses        # Set fuse configuration
+make read_fuses   # Verify fuses
+```
 
-### Building Unit Tests
+Default programmer: stk500v2 on `/dev/ttyACM0`. Override with:
 
-To build the unit tests (which run on your host machine and omit AVR-specific code):
-
-1. **Configure with tests enabled:**
-   ```bash
-   mkdir build_tests && cd build_tests
-   cmake -DBUILD_TESTS=ON ..
-   ```
-
-2. **Build the tests:**
-   ```bash
-   make
-   ```
-
-3. **Run the tests:**
-   ```bash
-   ./test/unit/gatekeeper_unit_tests
-   ```
-
-## Flashing the Microcontroller
-
-After building the application, a HEX file is generated from the ELF binary. Use the included flash target to program your ATtiny85.
-
-### Flashing the Application
-
-1. **Connect your ATtiny85 via the appropriate programmer (e.g., stk500v2).**
-
-2. **Flash the firmware:**
-   ```bash
-   make flash
-   ```
-
-   The command uses avrdude with settings defined in the CMakeLists.txt:
-   - **MCU:** ATtiny85
-   - **Programmer:** stk500v2 (default)
-   - **Programmer Port:** `/dev/ttyACM0` (default)
-
-   To use a different programmer or port, configure CMake with:
-   ```bash
-   cmake -DPROGRAMMER=usbasp -DPROGRAMMER_PORT=/dev/ttyUSB0 ..
-   ```
-
-### Fuse Settings
-
-- **Write Fuses:**  
-  To program the fuse settings with safe defaults:
-  ```bash
-  make fuses
-  ```
-
-- **Read Fuses:**  
-  To read the current fuse settings:
-  ```bash
-  make read_fuses
-  ```
-
-## Debugging & Optimization
-
-- **Stripped Debug Info:**  
-  The release build strips debug symbols (via the `-s` flag and `avr-strip`) to reduce binary size.
-- **Unit Testing:**  
-  The unit tests use a host compiler (gcc) and include a `TEST_BUILD` macro to skip AVR-specific code during test compilation.
+```bash
+cmake -DPROGRAMMER=usbasp -DPROGRAMMER_PORT=/dev/ttyUSB0 ..
+```
 
 ## License
 

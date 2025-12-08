@@ -8,11 +8,21 @@
 
 #include "hardware/hal_interface.h"
 
-#define BUTTON_PIN PB0
-#define SIG_OUT_PIN PB1
-#define LED_MODE_TOP_PIN PB2
-#define LED_OUTPUT_INDICATOR_PIN PB3
-#define LED_MODE_BOTTOM_PIN PB4
+// ATtiny85 has PB0-PB5 (PB5 is typically RESET unless fuse is changed)
+#define HAL_MAX_PIN 5
+
+// Rev2 Pin Assignments (ATtiny85)
+// See docs/planning/decision-records/001-rev2-architecture.md
+#define BUTTON_A_PIN PB2                // Primary button (menu/mode)
+#define BUTTON_B_PIN PB4                // Secondary button (value/action)
+#define SIG_OUT_PIN PB1                 // CV output (directly to buffer circuit)
+#define NEOPIXEL_PIN PB0                // WS2812B data line (future)
+#define CV_IN_PIN PB3                   // CV input (future)
+
+// LED indicator pins (accent feedback via Neopixel planned)
+#define LED_MODE_TOP_PIN PB0            // Neopixel LED A
+#define LED_OUTPUT_INDICATOR_PIN PB1    // Driven by output buffer circuit
+#define LED_MODE_BOTTOM_PIN PB0         // Neopixel LED B
 
 void hal_init(void);
 
@@ -24,8 +34,15 @@ uint8_t hal_read_pin(uint8_t pin);
 
 void hal_init_timer0(void);
 uint32_t hal_millis(void);
+void hal_delay_ms(uint32_t ms);
 void hal_advance_time(uint32_t ms);
 void hal_reset_time(void);
+
+// EEPROM functions
+uint8_t hal_eeprom_read_byte(uint16_t addr);
+void hal_eeprom_write_byte(uint16_t addr, uint8_t value);
+uint16_t hal_eeprom_read_word(uint16_t addr);
+void hal_eeprom_write_word(uint16_t addr, uint16_t value);
 
 #endif /* GK_HARDWARE_HAL_H */
 

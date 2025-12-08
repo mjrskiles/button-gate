@@ -1,32 +1,32 @@
 #include "input/button.h"
 
 bool button_init(Button *button, uint8_t pin) {
+    if (!button) return false;
+    if (pin > p_hal->max_pin) return false;
+
     button->pin = pin;
-    button->config_action = false;
+    button->status = 0;  // Clear all flags
     button->last_tap_time = 0;
-    button->counting_hold = false;
     button_reset(button);
 
     return true;
 }
 
 void button_reset(Button *button) {
-    button->raw_state = false;
-    button->pressed = false;
-    button->last_state = false;
-    button->rising_edge = false;
-    button->falling_edge = false;
+    if (!button) return;
+
+    button->status = 0;  // Clear all flags
     button->tap_count = 0;
     button->last_rise_time = 0;
     button->last_fall_time = 0;
     button->last_tap_time = 0;
-    button->counting_hold = false;
 }
 
 bool button_has_rising_edge(Button *button) {
-    // If the button is pressed and was not pressed before, it's a rising edge.
+    // Rising edge: raw is high, last state was low
     // Take into account debounce time.
-    if (button->raw_state && !button->last_state) {
+    if (STATUS_ANY(button->status, BTN_RAW) &&
+        STATUS_NONE(button->status, BTN_LAST)) {
         if (p_hal->millis() - button->last_rise_time > EDGE_DEBOUNCE_MS) {
             button->last_rise_time = p_hal->millis();
             return true;
@@ -36,8 +36,9 @@ bool button_has_rising_edge(Button *button) {
 }
 
 bool button_has_falling_edge(Button *button) {
-    // If the button is not pressed and was pressed before, it's a falling edge.
-    if (!button->raw_state && button->last_state) {
+    // Falling edge: raw is low, last state was high
+    if (STATUS_NONE(button->status, BTN_RAW) &&
+        STATUS_ANY(button->status, BTN_LAST)) {
         if (p_hal->millis() - button->last_fall_time > EDGE_DEBOUNCE_MS) {
             button->last_fall_time = p_hal->millis();
             return true;
@@ -47,33 +48,34 @@ bool button_has_falling_edge(Button *button) {
 }
 
 void button_update(Button *button) {
-    button->raw_state = p_hal->read_pin(button->pin);
-    button->rising_edge = false;
-    button->falling_edge = false;
-    
+    // Read raw pin state
+    STATUS_PUT(button->status, BTN_RAW, p_hal->read_pin(button->pin));
+
+    // Clear edge flags at start of cycle
+    STATUS_CLR(button->status, BTN_RISE | BTN_FALL);
+
     // Detect rising edge (button press)
     if (button_has_rising_edge(button)) {
-        button->rising_edge = true;
-        button->pressed = true;
+        STATUS_SET(button->status, BTN_RISE | BTN_PRESSED);
     }
 
     // Detect falling edge (button release)
     if (button_has_falling_edge(button)) {
-        button->falling_edge = true;
-        button->pressed = false;
+        STATUS_SET(button->status, BTN_FALL);
+        STATUS_CLR(button->status, BTN_PRESSED);
     }
 
     // Check if we've requested a mode change
     if (button_detect_config_action(button)) {
-        // Set config action flag
-        button->config_action = true;
+        STATUS_SET(button->status, BTN_CONFIG);
     }
 
-    button->last_state = button->pressed;
+    // Update last state to match current pressed state
+    STATUS_PUT(button->status, BTN_LAST, STATUS_ANY(button->status, BTN_PRESSED));
 }
 
 void button_consume_config_action(Button *button) {
-    button->config_action = false;
+    STATUS_CLR(button->status, BTN_CONFIG);
 }
 
 bool button_detect_config_action(Button *button) {
@@ -81,7 +83,7 @@ bool button_detect_config_action(Button *button) {
     bool action_detected = false;
 
     // On rising edge (new press)
-    if (button->rising_edge) {
+    if (STATUS_ANY(button->status, BTN_RISE)) {
         // Check if this tap is within the timeout window
         if (current_time - button->last_tap_time <= TAP_TIMEOUT_MS) {
             button->tap_count++;
@@ -91,24 +93,25 @@ bool button_detect_config_action(Button *button) {
         }
         button->last_tap_time = current_time;
 
-        // If we've reached required taps, start counting hold time from this press
+        // If we've reached required taps, start counting hold time
         if (button->tap_count >= TAPS_TO_CHANGE) {
-            button->counting_hold = true;
+            STATUS_SET(button->status, BTN_COUNTING);
         }
     }
 
     // Check for hold on the Nth tap (hold the last tap to trigger)
-    if (button->counting_hold && button->pressed) {
+    if (STATUS_ANY(button->status, BTN_COUNTING) &&
+        STATUS_ANY(button->status, BTN_PRESSED)) {
         if (current_time - button->last_tap_time >= HOLD_TIME_MS) {
             action_detected = true;
-            button->counting_hold = false;
+            STATUS_CLR(button->status, BTN_COUNTING);
             button->tap_count = 0;
         }
     }
 
     // Reset if button released before hold completed
-    if (!button->pressed) {
-        button->counting_hold = false;
+    if (STATUS_NONE(button->status, BTN_PRESSED)) {
+        STATUS_CLR(button->status, BTN_COUNTING);
         if (current_time - button->last_tap_time > TAP_TIMEOUT_MS) {
             button->tap_count = 0;
         }

@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME}_unit_tests
     ${CMAKE_SOURCE_DIR}/src/controller/io_controller.c
     ${CMAKE_SOURCE_DIR}/src/state/mode.c
     ${CMAKE_SOURCE_DIR}/src/utility/delay.c
+    ${CMAKE_SOURCE_DIR}/src/app_init.c
 )
 
 # Add test include directories
@@ -23,6 +24,6 @@ target_include_directories(${PROJECT_NAME}_unit_tests PRIVATE
     ${CMAKE_SOURCE_DIR}/test/unit
 )
 
-target_link_libraries(${PROJECT_NAME}_unit_tests PRIVATE 
+target_link_libraries(${PROJECT_NAME}_unit_tests PRIVATE
     unity::framework
 )

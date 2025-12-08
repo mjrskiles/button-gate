@@ -1,26 +1,40 @@
 #include "mock_hal.h"
+#include <string.h>
 
 // Per-pin state tracking (supports pins 0-7)
 #define MOCK_NUM_PINS 8
 static uint8_t mock_pin_states[MOCK_NUM_PINS] = {0};
 static uint32_t vmock_millis = 0;
 
+// Mock EEPROM (512 bytes, matching ATtiny85)
+#define MOCK_EEPROM_SIZE 512
+static uint8_t mock_eeprom[MOCK_EEPROM_SIZE];
+
 // The mock interface instance
+// Note: Pin assignments use unique values for testability, even though
+// Rev2 hardware shares pins (Neopixels on PB0, output LED from buffer).
 static HalInterface mock_hal = {
-    .button_pin         = 0,
-    .sig_out_pin        = 1,
-    .led_mode_top_pin   = 2,
-    .led_output_indicator_pin = 3,
-    .led_mode_bottom_pin = 4,
-    .init         = mock_hal_init,
-    .set_pin      = mock_set_pin,
-    .clear_pin    = mock_clear_pin,
-    .toggle_pin   = mock_toggle_pin,
-    .read_pin     = mock_read_pin,
-    .init_timer   = mock_init_timer0,
-    .millis       = mock_millis,
-    .advance_time = advance_mock_time,
-    .reset_time   = reset_mock_time,
+    .max_pin            = MOCK_NUM_PINS - 1,  // 0-7 valid
+    .button_a_pin       = 2,  // PB2 in Rev2
+    .button_b_pin       = 4,  // PB4 in Rev2
+    .sig_out_pin        = 1,  // PB1 in Rev2
+    .led_mode_top_pin   = 5,  // Virtual pin for testing (Neopixel A in Rev2)
+    .led_output_indicator_pin = 6,  // Virtual pin for testing (buffer LED in Rev2)
+    .led_mode_bottom_pin = 7,  // Virtual pin for testing (Neopixel B in Rev2)
+    .init               = mock_hal_init,
+    .set_pin            = mock_set_pin,
+    .clear_pin          = mock_clear_pin,
+    .toggle_pin         = mock_toggle_pin,
+    .read_pin           = mock_read_pin,
+    .init_timer         = mock_init_timer0,
+    .millis             = mock_millis,
+    .delay_ms           = mock_delay_ms,
+    .advance_time       = advance_mock_time,
+    .reset_time         = reset_mock_time,
+    .eeprom_read_byte   = mock_eeprom_read_byte,
+    .eeprom_write_byte  = mock_eeprom_write_byte,
+    .eeprom_read_word   = mock_eeprom_read_word,
+    .eeprom_write_word  = mock_eeprom_write_word,
 };
 
 HalInterface *p_hal = &mock_hal;
@@ -34,6 +48,8 @@ void mock_hal_init(void) {
         mock_pin_states[i] = 0;
     }
     vmock_millis = 0;
+    // Initialize EEPROM to 0xFF (erased state)
+    memset(mock_eeprom, 0xFF, MOCK_EEPROM_SIZE);
 }
 
 void mock_set_pin(uint8_t pin) {
@@ -70,10 +86,52 @@ uint32_t mock_millis(void) {
     return vmock_millis;
 }
 
+void mock_delay_ms(uint32_t ms) {
+    // In mock, delay just advances time - no actual blocking
+    vmock_millis += ms;
+}
+
 void advance_mock_time(uint32_t ms) {
     vmock_millis += ms;
 } 
 
 void reset_mock_time(void) {
     vmock_millis = 0;
+}
+
+uint8_t mock_eeprom_read_byte(uint16_t addr) {
+    if (addr < MOCK_EEPROM_SIZE) {
+        return mock_eeprom[addr];
+    }
+    return 0xFF;
+}
+
+void mock_eeprom_write_byte(uint16_t addr, uint8_t value) {
+    if (addr < MOCK_EEPROM_SIZE) {
+        mock_eeprom[addr] = value;
+    }
+}
+
+uint16_t mock_eeprom_read_word(uint16_t addr) {
+    if (addr + 1 < MOCK_EEPROM_SIZE) {
+        // Little-endian (AVR native byte order)
+        return mock_eeprom[addr] | ((uint16_t)mock_eeprom[addr + 1] << 8);
+    }
+    return 0xFFFF;
+}
+
+void mock_eeprom_write_word(uint16_t addr, uint16_t value) {
+    if (addr + 1 < MOCK_EEPROM_SIZE) {
+        // Little-endian (AVR native byte order)
+        mock_eeprom[addr] = value & 0xFF;
+        mock_eeprom[addr + 1] = (value >> 8) & 0xFF;
+    }
+}
+
+void mock_eeprom_clear(void) {
+    memset(mock_eeprom, 0xFF, MOCK_EEPROM_SIZE);
+}
+
+uint16_t mock_eeprom_size(void) {
+    return MOCK_EEPROM_SIZE;
 }

@@ -5,6 +5,7 @@
 #include "unity_fixture.h"
 #include "output/cv_output.h"
 #include "hardware/hal_interface.h"
+#include "utility/status.h"
 
 CVOutput cv_output;
 
@@ -23,134 +24,134 @@ TEST_TEAR_DOWN(CVOutputTests) {
 TEST(CVOutputTests, TestCVOutputInit) {
     cv_output_init(&cv_output, 1);
     TEST_ASSERT_EQUAL(1, cv_output.pin);
-    TEST_ASSERT_EQUAL(false, cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputReset) {
-    cv_output.state = true;
+    STATUS_SET(cv_output.status, CVOUT_STATE);
     cv_output_reset(&cv_output);
-    TEST_ASSERT_EQUAL(false, cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputSet) {
     cv_output_set(&cv_output);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputClear) {
-    cv_output.state = true;
+    STATUS_SET(cv_output.status, CVOUT_STATE);
     cv_output_clear(&cv_output);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputUpdateGateHigh) {
     bool result = cv_output_update_gate(&cv_output, true);
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputUpdateGateLow) {
-    cv_output.state = true;
+    STATUS_SET(cv_output.status, CVOUT_STATE);
     bool result = cv_output_update_gate(&cv_output, false);
     TEST_ASSERT_FALSE(result);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputUpdatePulseRisingEdge) {
     bool result = cv_output_update_pulse(&cv_output, true);
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 
     // Release button
     p_hal->advance_time(1000);
     cv_output_update_pulse(&cv_output, false);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputUpdatePulseDuration) {
     // Trigger pulse
     cv_output_update_pulse(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+
     // Advance time just before pulse should end
     p_hal->advance_time(PULSE_DURATION_MS - 1);
     cv_output_update_pulse(&cv_output, false);
-    TEST_ASSERT_TRUE(cv_output.state);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+
     // Advance time past pulse duration
     p_hal->advance_time(2);
     cv_output_update_pulse(&cv_output, false);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputUpdatePulseNoRetrigger) {
     // Initial pulse
     cv_output_update_pulse(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+
     // Try to retrigger while pulse is active
     p_hal->advance_time(PULSE_DURATION_MS / 2);
     cv_output_update_pulse(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+
     // Pulse should still end at original time
     p_hal->advance_time(PULSE_DURATION_MS / 2 + 1);
     cv_output_update_pulse(&cv_output, false);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputUpdateToggleRisingEdge) {
     // First toggle
     bool result = cv_output_update_toggle(&cv_output, true);
     TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_TRUE(cv_output.state);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+
     // Release button
     cv_output_update_toggle(&cv_output, false);
-    TEST_ASSERT_TRUE(cv_output.state);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+
     // Second toggle
     result = cv_output_update_toggle(&cv_output, true);
     TEST_ASSERT_FALSE(result);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(CVOutputTests, TestCVOutputUpdateToggleNoChangeOnHold) {
     // Initial toggle
     cv_output_update_toggle(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
-    
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+
     // Hold button down
     cv_output_update_toggle(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 // P1: Boundary condition tests
 
 TEST(CVOutputTests, TestPulseExpiresAtExactBoundary) {
     cv_output_update_pulse(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
-    TEST_ASSERT_TRUE(cv_output.pulse_active);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_PULSE));
 
     // Advance exactly to pulse duration boundary
     p_hal->advance_time(PULSE_DURATION_MS);
     cv_output_update_pulse(&cv_output, false);
 
-    TEST_ASSERT_FALSE(cv_output.state);
-    TEST_ASSERT_FALSE(cv_output.pulse_active);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_PULSE));
 }
 
 TEST(CVOutputTests, TestPulseStillActiveJustBeforeBoundary) {
     cv_output_update_pulse(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 
     // Advance to just before pulse duration boundary
     p_hal->advance_time(PULSE_DURATION_MS - 1);
     cv_output_update_pulse(&cv_output, false);
 
     // Should still be active
-    TEST_ASSERT_TRUE(cv_output.state);
-    TEST_ASSERT_TRUE(cv_output.pulse_active);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_PULSE));
 }
 
 TEST(CVOutputTests, TestPulseImmediateRetriggerAfterExpiry) {
@@ -158,17 +159,17 @@ TEST(CVOutputTests, TestPulseImmediateRetriggerAfterExpiry) {
     cv_output_update_pulse(&cv_output, true);
     p_hal->advance_time(PULSE_DURATION_MS + 1);
     cv_output_update_pulse(&cv_output, false);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 
     // Immediate re-trigger
     cv_output_update_pulse(&cv_output, true);
-    TEST_ASSERT_TRUE(cv_output.state);
-    TEST_ASSERT_TRUE(cv_output.pulse_active);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_PULSE));
 
     // Verify second pulse also times out correctly
     p_hal->advance_time(PULSE_DURATION_MS);
     cv_output_update_pulse(&cv_output, false);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST_GROUP_RUNNER(CVOutputTests) {

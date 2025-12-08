@@ -1,23 +1,27 @@
-# FDP-001: Application Bootloader
+# FDP-001: Application Initialization
 
 ## Status
 
-Proposed
+Implemented
+
+> **Note**: This feature was originally designed as "bootloader" but renamed to "app_init"
+> for clarity. The term "bootloader" in embedded systems typically refers to code that
+> can reprogram the device (like Micronucleus or Optiboot). This module is application
+> initialization code - it handles settings loading and factory reset but cannot
+> reprogram the device.
 
 ## Summary
 
-Replace the current `startup` module with a comprehensive `bootloader` module that handles factory reset detection, EEPROM settings validation, and graceful degradation on errors. This provides a robust initialization sequence suitable for a reference open-source project.
+Replace the current `startup` module with a comprehensive `app_init` module that handles factory reset detection, EEPROM settings validation, and graceful degradation on errors. This provides a robust initialization sequence suitable for a reference open-source project.
 
 ## Motivation
 
-The current startup sequence (`startup.c`) only flashes LEDs as a visual test. For Rev2 with persistent EEPROM settings, we need a proper bootloader that:
+The current startup sequence (`startup.c`) only flashes LEDs as a visual test. For Rev2 with persistent EEPROM settings, we need proper initialization that:
 
 1. **Factory Reset**: Allows users to reset to defaults without reprogramming
 2. **Settings Validation**: Ensures corrupted EEPROM doesn't cause undefined behavior
 3. **Graceful Degradation**: Falls back to safe defaults rather than failing silently
 4. **Educational Value**: Demonstrates embedded best practices for newcomers
-
-Additionally, renaming `startup` to `bootloader` better communicates the module's purpose to less experienced users.
 
 ## Detailed Design
 
@@ -415,14 +419,23 @@ void mock_eeprom_clear(void);
 
 ## Implementation Checklist
 
-- [ ] Create `include/bootloader.h` with interface
-- [ ] Create `src/bootloader.c` with implementation
-- [ ] Add EEPROM simulation to mock HAL
-- [ ] Create `test/unit/bootloader/test_bootloader.h`
-- [ ] Update `unit_tests.c` to include bootloader tests
-- [ ] Update `main.c` to use bootloader
-- [ ] Delete `startup.c` and `startup.h`
-- [ ] Update `src/CMakeLists.txt`
-- [ ] Update `docs/ARCHITECTURE.md`
+- [x] Create `include/bootloader.h` with interface
+- [x] Create `src/bootloader.c` with implementation
+- [x] Add EEPROM simulation to mock HAL
+- [x] Create `test/unit/bootloader/test_bootloader.h`
+- [x] Update `unit_tests.c` to include bootloader tests
+- [x] Update `main.c` to use bootloader
+- [x] Delete `startup.c` and `startup.h`
+- [x] Update `src/CMakeLists.txt` (bootloader added via test CMakeLists)
+- [x] Update `docs/ARCHITECTURE.md`
 - [ ] Test on hardware (Rev1 or Rev2 prototype)
 - [ ] Update README if boot behavior mentioned
+
+## Implementation Notes
+
+Implementation completed with minor deviations from original design:
+
+1. **LED Test Skipped**: Per user feedback, boot goes directly to RUN mode without LED flash test
+2. **Schema Version Added**: EEPROM now includes schema version byte for future migration support
+3. **Magic Value**: Changed to 0x474B ("GK" for Gatekeeper) instead of 0xBG01
+4. **HAL delay_ms**: Added `delay_ms` to HAL interface for clean mock/production abstraction

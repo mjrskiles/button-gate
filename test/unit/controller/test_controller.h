@@ -5,6 +5,7 @@
 #include "unity_fixture.h"
 #include "controller/io_controller.h"
 #include "hardware/hal_interface.h"
+#include "utility/status.h"
 
 IOController io_controller;
 Button button;
@@ -14,7 +15,7 @@ TEST_GROUP(IOControllerTests);
 
 TEST_SETUP(IOControllerTests) {
     p_hal->init();
-    button_init(&button, p_hal->button_pin);
+    button_init(&button, p_hal->button_a_pin);
     cv_output_init(&cv_output, p_hal->sig_out_pin);
     io_controller_init(&io_controller, &button, &cv_output, p_hal->led_output_indicator_pin);
 }
@@ -35,12 +36,12 @@ TEST(IOControllerTests, TestIOControllerInit) {
 
 TEST(IOControllerTests, TestIOControllerModeChangeOnConfigAction) {
     // Trigger config action
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
-    
+
     TEST_ASSERT_EQUAL(MODE_PULSE, io_controller.mode);
     TEST_ASSERT_TRUE(io_controller.ignore_pressed);
-    TEST_ASSERT_FALSE(button.config_action);
+    TEST_ASSERT_FALSE(STATUS_ANY(button.status, BTN_CONFIG));
 }
 
 TEST(IOControllerTests, TestIOControllerGateMode) {
@@ -51,20 +52,20 @@ TEST(IOControllerTests, TestIOControllerGateMode) {
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
     
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     
     // Release button
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
     
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(IOControllerTests, TestIOControllerPulseMode) {
     // Change to pulse mode
     p_hal->set_pin(button.pin);
     p_hal->advance_time(100);
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_PULSE, io_controller.mode);
 
@@ -78,21 +79,21 @@ TEST(IOControllerTests, TestIOControllerPulseMode) {
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     
     // Advance past pulse duration
     p_hal->advance_time(PULSE_DURATION_MS + 1);
     io_controller_update(&io_controller);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(IOControllerTests, TestIOControllerToggleMode) {
     // Change to toggle mode
     p_hal->set_pin(button.pin);
     p_hal->advance_time(100);
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
 
     TEST_ASSERT_EQUAL(MODE_TOGGLE, io_controller.mode);
@@ -107,7 +108,7 @@ TEST(IOControllerTests, TestIOControllerToggleMode) {
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     
     // Release and toggle off
     p_hal->advance_time(100);
@@ -116,7 +117,7 @@ TEST(IOControllerTests, TestIOControllerToggleMode) {
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(IOControllerTests, TestIOControllerLEDOutput) {
@@ -124,19 +125,19 @@ TEST(IOControllerTests, TestIOControllerLEDOutput) {
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     
     p_hal->advance_time(100);
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST(IOControllerTests, TestIOControllerIgnorePressedReset) {
     // Set ignore_pressed via config action
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_TRUE(io_controller.ignore_pressed);
 
@@ -156,7 +157,7 @@ TEST(IOControllerTests, TestOutputIndicatorLEDFollowsCVOutput) {
     io_controller_update(&io_controller);
 
     // Verify both cv_output state AND actual HAL pin state
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     TEST_ASSERT_EQUAL(1, p_hal->read_pin(p_hal->led_output_indicator_pin));
 
     // Release and verify LED turns off
@@ -164,7 +165,7 @@ TEST(IOControllerTests, TestOutputIndicatorLEDFollowsCVOutput) {
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
 
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     TEST_ASSERT_EQUAL(0, p_hal->read_pin(p_hal->led_output_indicator_pin));
 }
 
@@ -179,7 +180,7 @@ TEST(IOControllerTests, TestModeLEDsInGateMode) {
 
 TEST(IOControllerTests, TestModeLEDsInPulseMode) {
     // Switch to pulse mode
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
 
     // Pulse mode: top=OFF, bottom=ON
@@ -190,9 +191,9 @@ TEST(IOControllerTests, TestModeLEDsInPulseMode) {
 
 TEST(IOControllerTests, TestModeLEDsInToggleMode) {
     // Switch to toggle mode (two mode changes)
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
 
     // Toggle mode: top=ON, bottom=ON
@@ -207,14 +208,14 @@ TEST(IOControllerTests, TestCVOutputPinFollowsState) {
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
 
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     TEST_ASSERT_EQUAL(1, p_hal->read_pin(p_hal->sig_out_pin));
 
     p_hal->advance_time(100);
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
 
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
     TEST_ASSERT_EQUAL(0, p_hal->read_pin(p_hal->sig_out_pin));
 }
 
@@ -225,7 +226,7 @@ TEST(IOControllerTests, TestCompleteModeCycle) {
     TEST_ASSERT_EQUAL(MODE_GATE, io_controller.mode);
 
     // Gate -> Pulse
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_PULSE, io_controller.mode);
 
@@ -234,7 +235,7 @@ TEST(IOControllerTests, TestCompleteModeCycle) {
     io_controller_update(&io_controller);
 
     // Pulse -> Toggle
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_TOGGLE, io_controller.mode);
 
@@ -243,7 +244,7 @@ TEST(IOControllerTests, TestCompleteModeCycle) {
     io_controller_update(&io_controller);
 
     // Toggle -> Gate (full cycle)
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_GATE, io_controller.mode);
 
@@ -258,7 +259,7 @@ TEST(IOControllerTests, TestToggleModeMultiplePresses) {
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_PULSE, io_controller.mode);
 
@@ -272,7 +273,7 @@ TEST(IOControllerTests, TestToggleModeMultiplePresses) {
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    button.config_action = true;
+    STATUS_SET(button.status, BTN_CONFIG);
     io_controller_update(&io_controller);
     TEST_ASSERT_EQUAL(MODE_TOGGLE, io_controller.mode);
 
@@ -286,31 +287,31 @@ TEST(IOControllerTests, TestToggleModeMultiplePresses) {
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 
     // Release
     p_hal->advance_time(100);
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_TRUE(cv_output.state);  // Should stay ON
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));  // Should stay ON
 
     // Second press: toggle OFF
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_FALSE(cv_output.state);
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 
     // Release
     p_hal->advance_time(100);
     p_hal->clear_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_FALSE(cv_output.state);  // Should stay OFF
+    TEST_ASSERT_FALSE(STATUS_ANY(cv_output.status, CVOUT_STATE));  // Should stay OFF
 
     // Third press: toggle ON again
     p_hal->advance_time(100);
     p_hal->set_pin(button.pin);
     io_controller_update(&io_controller);
-    TEST_ASSERT_TRUE(cv_output.state);
+    TEST_ASSERT_TRUE(STATUS_ANY(cv_output.status, CVOUT_STATE));
 }
 
 TEST_GROUP_RUNNER(IOControllerTests) {

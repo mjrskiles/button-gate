@@ -51,6 +51,12 @@ void mock_init_timer0(void);
 uint32_t mock_millis(void);
 
 /**
+ * @brief Mock delay - advances mock time instead of blocking
+ * @param ms Number of milliseconds to "delay" (advances mock time)
+ */
+void mock_delay_ms(uint32_t ms);
+
+/**
  * @brief Switches the global HAL interface to use this mock implementation
  */
 void use_mock_hal(void);
@@ -65,5 +71,44 @@ void advance_mock_time(uint32_t ms);
  * @brief Resets the mock system time to 0
  */
 void reset_mock_time(void);
+
+/**
+ * @brief Mock EEPROM read byte
+ * @param addr EEPROM address to read from
+ * @return The byte value at the specified address
+ */
+uint8_t mock_eeprom_read_byte(uint16_t addr);
+
+/**
+ * @brief Mock EEPROM write byte
+ * @param addr EEPROM address to write to
+ * @param value The byte value to write
+ */
+void mock_eeprom_write_byte(uint16_t addr, uint8_t value);
+
+/**
+ * @brief Mock EEPROM read word (16-bit)
+ * @param addr EEPROM address to read from
+ * @return The word value at the specified address
+ */
+uint16_t mock_eeprom_read_word(uint16_t addr);
+
+/**
+ * @brief Mock EEPROM write word (16-bit)
+ * @param addr EEPROM address to write to
+ * @param value The word value to write
+ */
+void mock_eeprom_write_word(uint16_t addr, uint16_t value);
+
+/**
+ * @brief Clears all mock EEPROM contents (sets all bytes to 0xFF)
+ */
+void mock_eeprom_clear(void);
+
+/**
+ * @brief Gets the size of the mock EEPROM
+ * @return Size of mock EEPROM in bytes
+ */
+uint16_t mock_eeprom_size(void);
 
 #endif /* GK_TEST_MOCKS_MOCK_HAL_H */

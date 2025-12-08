@@ -25,12 +25,16 @@
  *   standard embedded pattern and works well with the mock swap approach.
  */
 typedef struct HalInterface {
-    // pin assignment
-    uint8_t  button_pin;
-    uint8_t  sig_out_pin;
-    uint8_t  led_mode_top_pin;
-    uint8_t  led_output_indicator_pin;
-    uint8_t  led_mode_bottom_pin;
+    // Pin configuration
+    uint8_t  max_pin;                   // Maximum valid pin number (for validation)
+
+    // Pin assignments (directly readable for init without function call overhead)
+    uint8_t  button_a_pin;              // Primary button (menu/mode)
+    uint8_t  button_b_pin;              // Secondary button (value/action)
+    uint8_t  sig_out_pin;               // CV output
+    uint8_t  led_mode_top_pin;          // Mode indicator LED (top)
+    uint8_t  led_output_indicator_pin;  // Output activity LED
+    uint8_t  led_mode_bottom_pin;       // Mode indicator LED (bottom)
 
     // IO functions
     void     (*init)(void);
@@ -42,8 +46,15 @@ typedef struct HalInterface {
     // Timer functions
     void     (*init_timer)(void);
     uint32_t (*millis)(void);
-    void     (*advance_time)(uint32_t ms);
-    void     (*reset_time)(void);
+    void     (*delay_ms)(uint32_t ms);  // Blocking delay
+    void     (*advance_time)(uint32_t ms);  // Test helper: manually advance time
+    void     (*reset_time)(void);  // Test helper: reset time to 0
+
+    // EEPROM functions
+    uint8_t  (*eeprom_read_byte)(uint16_t addr);
+    void     (*eeprom_write_byte)(uint16_t addr, uint8_t value);
+    uint16_t (*eeprom_read_word)(uint16_t addr);
+    void     (*eeprom_write_word)(uint16_t addr, uint16_t value);
 } HalInterface;
 
 // Global pointer to the current HAL implementation.

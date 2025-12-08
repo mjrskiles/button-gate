@@ -9,6 +9,7 @@ build/
 .cache
 build_tests/
 
+.claude/temp/
 .cursorrules
 .vscode
 .continuity

@@ -7,6 +7,8 @@
 #include "output/test_cv_output.h"
 #include "state/test_mode.h"
 #include "controller/test_controller.h"
+#include "app_init/test_app_init.h"
+#include "utility/test_struct_sizes.h"
 
 void run_all_tests(void);
 
@@ -30,6 +32,8 @@ void run_all_tests(void) {
     RunAllCVOutputTests();
     RunAllModeTests();
     RunAllIOControllerTests();
+    RunAllAppInitTests();
+    RunAllStructSizeTests();
 }
 
 /**
