@@ -81,12 +81,12 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed documentation incl
 
 **Firmware build:**
 - AVR-GCC toolchain (`avr-gcc`, `avr-objcopy`, `avr-size`, `avr-strip`)
-- CMake 3.25+
+- CMake 3.21+
 - Optional: `avrdude` (flashing), `bc` + `avr-nm` (size analysis)
 
 **Test/Simulator build** (no AVR toolchain needed):
 - GCC (host compiler)
-- CMake 3.25+
+- CMake 3.21+
 
 Install on Debian/Ubuntu:
 ```bash
@@ -100,12 +100,9 @@ sudo apt install gcc-avr avr-libc cmake
 sudo apt install gcc-avr avr-libc binutils-avr avrdude cmake bc
 ```
 
-### Quick Start (CMake Presets)
+### Quick Start
 
 ```bash
-# List available presets
-cmake --list-presets
-
 # Build firmware
 cmake --preset firmware && cmake --build --preset firmware
 
@@ -113,29 +110,9 @@ cmake --preset firmware && cmake --build --preset firmware
 cmake --preset tests && cmake --build --preset tests
 ctest --preset tests
 
-# Build and run x86 simulator
+# Build and run simulator
 cmake --preset sim && cmake --build --preset sim
 ./build_sim/sim/gatekeeper-sim
-```
-
-The firmware build runs a post-build size analysis showing flash/RAM usage and largest symbols.
-
-### Legacy Build (CMake < 3.25)
-
-```bash
-# Build firmware
-mkdir build && cd build
-cmake .. && make
-
-# Build and run tests
-mkdir build_tests && cd build_tests
-cmake -DBUILD_TESTS=ON .. && make
-./test/unit/gatekeeper_unit_tests
-
-# Build and run x86 simulator
-mkdir build_sim && cd build_sim
-cmake -DBUILD_SIM=ON .. && make
-./sim/gatekeeper-sim
 ```
 
 ### x86 Simulator
