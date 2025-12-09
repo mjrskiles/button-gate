@@ -1,6 +1,7 @@
 #include "hardware/hal.h"
 #include <avr/eeprom.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h>
 
 static HalInterface default_hal = {
     .max_pin            = HAL_MAX_PIN,
@@ -25,6 +26,9 @@ static HalInterface default_hal = {
     .eeprom_read_word   = hal_eeprom_read_word,
     .eeprom_write_word  = hal_eeprom_write_word,
     .adc_read           = hal_adc_read,
+    .wdt_enable         = hal_wdt_enable,
+    .wdt_reset          = hal_wdt_reset,
+    .wdt_disable        = hal_wdt_disable,
 };
 
 HalInterface *p_hal = &default_hal;
@@ -355,4 +359,42 @@ uint8_t hal_adc_read(uint8_t channel) {
 
     // Return 8-bit result (left-adjusted, so read ADCH only)
     return ADCH;
+}
+
+// =============================================================================
+// Watchdog Timer
+// =============================================================================
+
+/**
+ * Enable the watchdog timer with 250ms timeout.
+ *
+ * 250ms is chosen because:
+ * - Main loop runs at ~1ms, so 250ms gives 250 iterations of slack
+ * - Short enough to recover quickly from a hang
+ * - Long enough to not trip during normal operation
+ *
+ * Call once during startup, after hardware init.
+ */
+void hal_wdt_enable(void) {
+    wdt_enable(WDTO_250MS);
+}
+
+/**
+ * Reset (feed) the watchdog timer.
+ *
+ * Call once per main loop iteration. If not called within the timeout
+ * period, the MCU will reset.
+ */
+void hal_wdt_reset(void) {
+    wdt_reset();
+}
+
+/**
+ * Disable the watchdog timer.
+ *
+ * Use sparingly - typically only needed for long-running operations
+ * like EEPROM writes or firmware updates.
+ */
+void hal_wdt_disable(void) {
+    wdt_disable();
 }

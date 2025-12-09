@@ -125,4 +125,19 @@ uint8_t mock_adc_read(uint8_t channel);
  */
 void mock_adc_set_value(uint8_t channel, uint8_t value);
 
+/**
+ * @brief Mock watchdog enable (no-op in tests)
+ */
+void mock_wdt_enable(void);
+
+/**
+ * @brief Mock watchdog reset (no-op in tests)
+ */
+void mock_wdt_reset(void);
+
+/**
+ * @brief Mock watchdog disable (no-op in tests)
+ */
+void mock_wdt_disable(void);
+
 #endif /* GK_TEST_MOCKS_MOCK_HAL_H */

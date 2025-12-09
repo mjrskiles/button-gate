@@ -40,6 +40,9 @@ static HalInterface mock_hal = {
     .eeprom_read_word   = mock_eeprom_read_word,
     .eeprom_write_word  = mock_eeprom_write_word,
     .adc_read           = mock_adc_read,
+    .wdt_enable         = mock_wdt_enable,
+    .wdt_reset          = mock_wdt_reset,
+    .wdt_disable        = mock_wdt_disable,
 };
 
 HalInterface *p_hal = &mock_hal;
@@ -155,3 +158,8 @@ void mock_adc_set_value(uint8_t channel, uint8_t value) {
         mock_adc_values[channel] = value;
     }
 }
+
+// Watchdog stubs (no-op in tests)
+void mock_wdt_enable(void) {}
+void mock_wdt_reset(void) {}
+void mock_wdt_disable(void) {}

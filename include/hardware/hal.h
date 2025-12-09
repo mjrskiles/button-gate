@@ -48,6 +48,11 @@ void hal_eeprom_write_word(uint16_t addr, uint16_t value);
 void hal_init_adc(void);
 uint8_t hal_adc_read(uint8_t channel);
 
+// Watchdog functions
+void hal_wdt_enable(void);
+void hal_wdt_reset(void);
+void hal_wdt_disable(void);
+
 #endif /* GK_HARDWARE_HAL_H */
 
 

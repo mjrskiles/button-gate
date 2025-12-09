@@ -54,6 +54,9 @@ static void sim_eeprom_write_byte(uint16_t addr, uint8_t value);
 static uint16_t sim_eeprom_read_word(uint16_t addr);
 static void sim_eeprom_write_word(uint16_t addr, uint16_t value);
 static uint8_t sim_adc_read(uint8_t channel);
+static void sim_wdt_enable(void);
+static void sim_wdt_reset(void);
+static void sim_wdt_disable(void);
 
 // Global HAL pointer (defined in hal_interface.h as extern)
 HalInterface *p_hal = NULL;
@@ -82,6 +85,9 @@ static HalInterface sim_hal = {
     .eeprom_read_word   = sim_eeprom_read_word,
     .eeprom_write_word  = sim_eeprom_write_word,
     .adc_read           = sim_adc_read,
+    .wdt_enable         = sim_wdt_enable,
+    .wdt_reset          = sim_wdt_reset,
+    .wdt_disable        = sim_wdt_disable,
 };
 
 // =============================================================================
@@ -163,6 +169,11 @@ static uint8_t sim_adc_read(uint8_t channel) {
     }
     return 0;
 }
+
+// Watchdog stubs (no-op in simulator)
+static void sim_wdt_enable(void) {}
+static void sim_wdt_reset(void) {}
+static void sim_wdt_disable(void) {}
 
 // =============================================================================
 // Public API

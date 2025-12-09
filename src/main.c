@@ -10,6 +10,9 @@ int main(void) {
     // Initialize hardware
     p_hal->init();
 
+    // Enable watchdog timer (250ms timeout)
+    p_hal->wdt_enable();
+
     // Run app initialization - handles factory reset detection and settings loading
     AppInitResult init_result = app_init_run(&settings);
     (void)init_result;  // Could log or indicate via LED
@@ -27,6 +30,9 @@ int main(void) {
 
     // Main loop
     while (1) {
+        // Feed watchdog at start of each loop iteration
+        p_hal->wdt_reset();
+
         // Update coordinator (processes inputs, runs mode handlers)
         coordinator_update(&coordinator);
 

@@ -58,6 +58,11 @@ typedef struct HalInterface {
 
     // ADC functions (for analog CV input per ADR-004)
     uint8_t  (*adc_read)(uint8_t channel);  // Read 8-bit ADC value (0-255)
+
+    // Watchdog functions
+    void     (*wdt_enable)(void);   // Enable watchdog with default timeout
+    void     (*wdt_reset)(void);    // Feed the watchdog (call in main loop)
+    void     (*wdt_disable)(void);  // Disable watchdog (use sparingly)
 } HalInterface;
 
 // Global pointer to the current HAL implementation.
