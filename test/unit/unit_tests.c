@@ -5,6 +5,9 @@
 #include "example/test_example.h"
 #include "input/test_button.h"
 #include "output/test_cv_output.h"
+#include "output/test_neopixel.h"
+#include "output/test_led_animation.h"
+#include "output/test_led_feedback.h"
 #include "state/test_mode.h"
 #include "controller/test_controller.h"
 #include "app_init/test_app_init.h"
@@ -33,6 +36,9 @@ void run_all_tests(void) {
     RunAllExampleTests();
     RunAllButtonTests();
     RunAllCVOutputTests();
+    RunAllNeopixelTests();
+    RunAllLEDAnimationTests();
+    RunAllLEDFeedbackTests();
     RunAllModeTests();
     RunAllIOControllerTests();
     RunAllAppInitTests();

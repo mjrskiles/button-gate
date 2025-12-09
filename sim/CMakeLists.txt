@@ -1,5 +1,13 @@
 # Gatekeeper x86 Simulator
 # Build with: cmake -DBUILD_SIM=ON ..
+#
+# Output modes (no external dependencies):
+#   ./gatekeeper-sim              - Interactive terminal UI
+#   ./gatekeeper-sim --json       - NDJSON output (one JSON object per line)
+#   ./gatekeeper-sim --batch      - Plain text events (for CI/scripts)
+#   ./gatekeeper-sim --script X   - Run test script
+#
+# JSON schema: sim/schema/sim_state_v1.json
 
 project(gatekeeper-sim C)
 
@@ -13,12 +21,19 @@ file(GLOB_RECURSE APP_SOURCES
 list(FILTER APP_SOURCES EXCLUDE REGEX "main\\.c$")
 # Remove real HAL - we use sim_hal.c instead
 list(FILTER APP_SOURCES EXCLUDE REGEX "hardware/hal\\.c$")
+# Remove AVR neopixel - we use sim_neopixel.c instead
+list(FILTER APP_SOURCES EXCLUDE REGEX "output/neopixel\\.c$")
 
 # Simulator sources
 set(SIM_SOURCES
     sim_main.c
     sim_hal.c
+    sim_neopixel.c
+    sim_state.c
     input_source.c
+    render/render_terminal.c
+    render/render_json.c
+    render/render_batch.c
 )
 
 add_executable(gatekeeper-sim

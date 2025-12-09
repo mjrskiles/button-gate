@@ -43,10 +43,10 @@ typedef enum {
     EVT_A_HOLD,             // Button A held past threshold
     EVT_B_HOLD,             // Button B held past threshold
 
-    // === Compound gesture events ===
-    EVT_MENU_ENTER,         // A:hold + B:tap -> enter menu
+    // === Compound gesture events (order-sensitive) ===
+    EVT_MENU_ENTER,         // A:hold -> B:hold (A first, then B reaches threshold)
     EVT_MENU_EXIT,          // A:release while in menu -> exit menu
-    EVT_MODE_CHANGE,        // B:hold + A:hold -> advance mode
+    EVT_MODE_CHANGE,        // B:hold -> A:hold (B first, then A reaches threshold)
 
     // === Timing events ===
     EVT_TIMEOUT,            // Generic timeout (context-dependent)
@@ -66,6 +66,10 @@ typedef enum {
  *   [2] - EP_A_HOLD: Button A hold threshold reached
  *   [1] - EP_A_LAST: Previous button A state
  *   [0] - EP_A_PRESSED: Button A currently pressed
+ *
+ * Extended flags (bits 8-15, uses upper byte of uint16_t if needed):
+ *   For now we steal bit 7 for compound fired since CV_LAST is rarely needed
+ *   Actually, let's use a separate byte in the struct instead.
  */
 #define EP_A_PRESSED    (1 << 0)
 #define EP_A_LAST       (1 << 1)
@@ -75,6 +79,9 @@ typedef enum {
 #define EP_B_HOLD       (1 << 5)
 #define EP_CV_STATE     (1 << 6)
 #define EP_CV_LAST      (1 << 7)
+
+// Extended status flags (separate byte)
+#define EP_COMPOUND_FIRED (1 << 0)  // Compound gesture already fired this press
 
 /**
  * Timing thresholds (milliseconds)
@@ -90,6 +97,7 @@ typedef enum {
  */
 typedef struct {
     uint8_t status;             // Input states (see EP_* flags)
+    uint8_t ext_status;         // Extended status (see EP_COMPOUND_* flags)
     uint32_t a_press_time;      // Button A press timestamp
     uint32_t b_press_time;      // Button B press timestamp
 } EventProcessor;

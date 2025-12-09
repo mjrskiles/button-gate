@@ -4,6 +4,7 @@ void event_processor_init(EventProcessor *ep) {
     if (!ep) return;
 
     ep->status = 0;
+    ep->ext_status = 0;
     ep->a_press_time = 0;
     ep->b_press_time = 0;
 }
@@ -12,6 +13,7 @@ void event_processor_reset(EventProcessor *ep) {
     if (!ep) return;
 
     ep->status = 0;
+    ep->ext_status = 0;
     ep->a_press_time = 0;
     ep->b_press_time = 0;
 }
@@ -71,11 +73,7 @@ Event event_processor_update(EventProcessor *ep, const EventInput *input) {
     }
     // Falling edge (release)
     else if (!b_pressed && b_was_pressed) {
-        // Check for compound gesture: A:hold + B:tap = menu enter
-        if (STATUS_ANY(ep->status, EP_A_PRESSED) &&
-            STATUS_ANY(ep->status, EP_A_HOLD)) {
-            event = EVT_MENU_ENTER;
-        } else if (event == EVT_NONE) {
+        if (event == EVT_NONE) {
             // Check if it was a tap or longer
             if (!STATUS_ANY(ep->status, EP_B_HOLD)) {
                 event = EVT_B_TAP;
@@ -95,13 +93,31 @@ Event event_processor_update(EventProcessor *ep, const EventInput *input) {
         }
     }
 
-    // === Compound gesture: Both buttons held = mode change ===
-    if (STATUS_ALL(ep->status, EP_A_HOLD | EP_B_HOLD)) {
-        // Only fire once - check if this is a new detection
-        // We use the fact that both holds just became true
-        if (event == EVT_A_HOLD || event == EVT_B_HOLD) {
-            event = EVT_MODE_CHANGE;
+    // === Compound gesture detection (order-sensitive) ===
+    // Menu Enter: A pressed first, then B held for threshold
+    // Mode Change: B pressed first, then A held for threshold
+    //
+    // Only fire once per gesture (cleared when both buttons released)
+    if (!(ep->ext_status & EP_COMPOUND_FIRED)) {
+        // B just reached hold while A is pressed, and A was pressed first
+        if (event == EVT_B_HOLD &&
+            STATUS_ANY(ep->status, EP_A_PRESSED) &&
+            ep->a_press_time < ep->b_press_time) {
+            event = EVT_MENU_ENTER;
+            ep->ext_status |= EP_COMPOUND_FIRED;
         }
+        // A just reached hold while B is pressed, and B was pressed first
+        else if (event == EVT_A_HOLD &&
+                 STATUS_ANY(ep->status, EP_B_PRESSED) &&
+                 ep->b_press_time < ep->a_press_time) {
+            event = EVT_MODE_CHANGE;
+            ep->ext_status |= EP_COMPOUND_FIRED;
+        }
+    }
+
+    // Clear compound fired flag when both buttons are released
+    if (!a_pressed && !b_pressed) {
+        ep->ext_status &= ~EP_COMPOUND_FIRED;
     }
 
     // === CV edge detection ===

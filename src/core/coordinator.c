@@ -254,6 +254,11 @@ void coordinator_update(Coordinator *coord) {
     g_coord = NULL;
 }
 
+TopState coordinator_get_top_state(const Coordinator *coord) {
+    if (!coord) return TOP_PERFORM;
+    return (TopState)fsm_get_state(&coord->top_fsm);
+}
+
 ModeState coordinator_get_mode(const Coordinator *coord) {
     if (!coord) return MODE_GATE;
     return (ModeState)fsm_get_state(&coord->mode_fsm);

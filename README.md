@@ -28,7 +28,10 @@ This project is designed as a reference for those learning synth/modular DIY and
   Clean interface for hardware access, enabling comprehensive unit testing on the host machine.
 
 - **Unit Testing:**
-  133 tests using the Unity framework verify functionality without hardware.
+  159 tests using the Unity framework verify functionality without hardware.
+
+- **x86 Simulator:**
+  Interactive terminal UI or headless JSON output for testing without hardware.
 
 ## Hardware
 
@@ -120,26 +123,41 @@ The default build runs a post-build size analysis showing flash/RAM usage and la
 
 ### x86 Simulator
 
-The simulator runs the application logic on your host machine with an interactive terminal UI:
+The simulator runs the application logic on your host machine with multiple output modes:
 
+```bash
+./sim/gatekeeper-sim              # Interactive terminal UI
+./sim/gatekeeper-sim --json       # JSON output (NDJSON format)
+./sim/gatekeeper-sim --batch      # Plain text (for scripts/CI)
+./sim/gatekeeper-sim --fast       # Fast-forward mode
+./sim/gatekeeper-sim --script test.gks  # Run test script
+```
+
+**Terminal UI:**
 ```
 === Gatekeeper Simulator ===              Time: 1234 ms
+
+  LEDs: [███] [███]  (Mode / Activity)
+
+  State: PERFORM     Mode: GATE     Page: --
 
   Output: [ HIGH ]
 
   Button A: [HELD]    Button B: [ -- ]
 
-  [A] Button A    [B] Button B    [Q] Quit
-  [R] Reset time  [F] Fast/Realtime toggle
-
-Event Log:
-      0 ms  Simulator started
-   1000 ms  App initialized, mode=0
-   1200 ms  Button A pressed
-   1234 ms  Output -> HIGH
+  [A] Button A  [B] Button B  [Q] Quit
+  [R] Reset     [F] Fast/Real [L] Legend
 ```
 
-Use `--fast` for accelerated testing without real-time delays.
+**JSON Output:**
+
+The `--json` flag outputs state as [NDJSON](https://github.com/ndjson/ndjson-spec) (Newline Delimited JSON) - one JSON object per line, no external dependencies. Schema defined in `sim/schema/sim_state_v1.json`.
+
+```json
+{"version":1,"timestamp_ms":1234,"state":{"top":"PERFORM","mode":"GATE","page":null},"inputs":{"button_a":true,"button_b":false,"cv_in":false},"outputs":{"signal":true},"leds":[{"index":0,"name":"mode","r":0,"g":255,"b":0},{"index":1,"name":"activity","r":255,"g":255,"b":255}],"events":[]}
+```
+
+This enables piping to `jq`, logging, or building custom frontends.
 
 ### Flashing
 

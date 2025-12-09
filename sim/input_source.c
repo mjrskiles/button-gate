@@ -3,10 +3,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/select.h>
+
+// Simple logging for script mode (outputs to stdout)
+static void script_log(uint32_t time_ms, const char *fmt, ...) {
+    printf("[%8lu ms] ", (unsigned long)time_ms);
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+    printf("\n");
+    fflush(stdout);
+}
 
 // =============================================================================
 // Keyboard Input Source
@@ -18,48 +30,11 @@ typedef struct {
     bool realtime;
 } KeyboardCtx;
 
-static int kb_kbhit(void) {
-    struct timeval tv = {0, 0};
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
-    return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
-}
-
-static int kb_getch(void) {
-    unsigned char ch;
-    if (read(STDIN_FILENO, &ch, 1) == 1) return ch;
-    return -1;
-}
-
 static bool keyboard_update(InputSource *self, uint32_t current_time_ms) {
     (void)current_time_ms;
-    KeyboardCtx *ctx = (KeyboardCtx*)self->ctx;
-
-    while (kb_kbhit()) {
-        int ch = kb_getch();
-        switch (ch) {
-            case 'a': case 'A':
-                sim_set_button_a(!sim_get_button_a());
-                sim_log_event("Button A %s", sim_get_button_a() ? "pressed" : "released");
-                break;
-            case 'b': case 'B':
-                sim_set_button_b(!sim_get_button_b());
-                sim_log_event("Button B %s", sim_get_button_b() ? "pressed" : "released");
-                break;
-            case 'r': case 'R':
-                sim_log_event("Time reset to 0");
-                break;
-            case 'f': case 'F':
-                ctx->realtime = !ctx->realtime;
-                sim_log_event("Mode: %s", ctx->realtime ? "Realtime" : "Fast-forward");
-                break;
-            case 'q': case 'Q':
-            case 27:  // ESC
-            case 3:   // Ctrl+C
-                return false;
-        }
-    }
+    (void)self;
+    // Keyboard input is now handled directly in sim_main.c for terminal mode.
+    // This function is a no-op but keeps the interface consistent.
     return true;
 }
 
@@ -134,7 +109,7 @@ typedef struct {
     ScriptAction action;
     ScriptTarget target;
     bool value;             // For assert: expected value
-    char message[64];       // For log action
+    char message[128];      // For log action (generous size on x86)
 } ScriptEvent;
 
 typedef struct {
@@ -320,15 +295,15 @@ static bool script_update(InputSource *self, uint32_t current_time_ms) {
                 switch (evt->target) {
                     case TGT_BUTTON_A:
                         sim_set_button_a(true);
-                        sim_log_event("Script: Button A pressed");
+                        script_log(sim_get_time(), "Script: Button A pressed");
                         break;
                     case TGT_BUTTON_B:
                         sim_set_button_b(true);
-                        sim_log_event("Script: Button B pressed");
+                        script_log(sim_get_time(), "Script: Button B pressed");
                         break;
                     case TGT_CV:
                         sim_set_cv_in(true);
-                        sim_log_event("Script: CV high");
+                        script_log(sim_get_time(), "Script: CV high");
                         break;
                     default:
                         break;
@@ -339,15 +314,15 @@ static bool script_update(InputSource *self, uint32_t current_time_ms) {
                 switch (evt->target) {
                     case TGT_BUTTON_A:
                         sim_set_button_a(false);
-                        sim_log_event("Script: Button A released");
+                        script_log(sim_get_time(), "Script: Button A released");
                         break;
                     case TGT_BUTTON_B:
                         sim_set_button_b(false);
-                        sim_log_event("Script: Button B released");
+                        script_log(sim_get_time(), "Script: Button B released");
                         break;
                     case TGT_CV:
                         sim_set_cv_in(false);
-                        sim_log_event("Script: CV low");
+                        script_log(sim_get_time(), "Script: CV low");
                         break;
                     default:
                         break;
@@ -375,23 +350,23 @@ static bool script_update(InputSource *self, uint32_t current_time_ms) {
                         break;
                 }
                 if (actual != evt->value) {
-                    sim_log_event("ASSERT FAILED: %s expected %s, got %s",
+                    script_log(sim_get_time(), "ASSERT FAILED: %s expected %s, got %s",
                                   name,
                                   evt->value ? "HIGH" : "LOW",
                                   actual ? "HIGH" : "LOW");
                     ctx->failed = true;
                 } else {
-                    sim_log_event("ASSERT OK: %s is %s", name, actual ? "HIGH" : "LOW");
+                    script_log(sim_get_time(), "ASSERT OK: %s is %s", name, actual ? "HIGH" : "LOW");
                 }
                 break;
             }
 
             case ACT_LOG:
-                sim_log_event("Script: %s", evt->message);
+                script_log(sim_get_time(), "Script: %s", evt->message);
                 break;
 
             case ACT_QUIT:
-                sim_log_event("Script: quit");
+                script_log(sim_get_time(), "Script: quit");
                 return false;
         }
 
@@ -400,7 +375,7 @@ static bool script_update(InputSource *self, uint32_t current_time_ms) {
 
     // If we've processed all events and there's no quit, auto-quit
     if (ctx->current_event >= ctx->event_count) {
-        sim_log_event("Script: end of script");
+        script_log(sim_get_time(), "Script: end of script");
         return false;
     }
 

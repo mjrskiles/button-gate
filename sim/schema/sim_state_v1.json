@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sim_state_v1",
+  "title": "Gatekeeper Simulator State",
+  "description": "State snapshot from the Gatekeeper x86 simulator",
+  "type": "object",
+  "required": ["version", "timestamp_ms", "state", "inputs", "outputs", "leds"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version for compatibility checking"
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Simulation time in milliseconds"
+    },
+    "state": {
+      "type": "object",
+      "description": "FSM state information",
+      "required": ["top", "mode"],
+      "properties": {
+        "top": {
+          "type": "string",
+          "enum": ["PERFORM", "MENU"],
+          "description": "Top-level FSM state"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["GATE", "TRIGGER", "TOGGLE", "DIVIDE", "CYCLE"],
+          "description": "Current operating mode"
+        },
+        "page": {
+          "type": ["string", "null"],
+          "enum": ["GATE_CV", "TRIGGER_LENGTH", "TOGGLE_BEHAVIOR", "DIVIDE_DIVISOR", "CYCLE_PATTERN", null],
+          "description": "Current menu page (null when not in menu)"
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Input states",
+      "required": ["button_a", "button_b", "cv_in"],
+      "properties": {
+        "button_a": {
+          "type": "boolean",
+          "description": "Button A pressed state"
+        },
+        "button_b": {
+          "type": "boolean",
+          "description": "Button B pressed state"
+        },
+        "cv_in": {
+          "type": "boolean",
+          "description": "CV input high state"
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Output states",
+      "required": ["signal"],
+      "properties": {
+        "signal": {
+          "type": "boolean",
+          "description": "Signal output high state"
+        }
+      }
+    },
+    "leds": {
+      "type": "array",
+      "description": "LED states (index 0 = mode, index 1 = activity)",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["index", "name", "r", "g", "b"],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "name": {
+            "type": "string",
+            "enum": ["mode", "activity"]
+          },
+          "r": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "g": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "b": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "Recent events (may be empty or truncated)",
+      "items": {
+        "type": "object",
+        "required": ["time_ms", "type", "message"],
+        "properties": {
+          "time_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "type": {
+            "type": "string",
+            "enum": ["state_change", "mode_change", "page_change", "input", "output", "info"]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,21 +1,73 @@
 #include "sim_hal.h"
+#include "sim_state.h"
 #include "input_source.h"
+#include "render/render.h"
 #include "hardware/hal_interface.h"
 #include "app_init.h"
 #include "core/coordinator.h"
+#include "output/led_feedback.h"
+#include "output/neopixel.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <termios.h>
+#include <sys/select.h>
+
+/**
+ * @file sim_main.c
+ * @brief Gatekeeper x86 simulator entry point
+ *
+ * Headless architecture: state is collected into SimState,
+ * then rendered by the selected renderer (terminal, JSON, batch).
+ */
 
 static volatile bool running = true;
 static InputSource *input_source = NULL;
+static Renderer *renderer = NULL;
+static SimState sim_state;
+static LEDFeedbackController led_ctrl;
+
+// For keyboard input in terminal mode
+static struct termios orig_termios;
+static bool terminal_raw = false;
 
 static void handle_signal(int sig) {
     (void)sig;
     running = false;
+}
+
+static void enable_raw_mode(void) {
+    if (terminal_raw) return;
+    tcgetattr(STDIN_FILENO, &orig_termios);
+    struct termios raw = orig_termios;
+    raw.c_lflag &= ~(ECHO | ICANON);
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 0;
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    terminal_raw = true;
+}
+
+static void disable_raw_mode(void) {
+    if (!terminal_raw) return;
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+    terminal_raw = false;
+}
+
+static int kb_kbhit(void) {
+    struct timeval tv = {0, 0};
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+}
+
+static int kb_getch(void) {
+    unsigned char ch;
+    if (read(STDIN_FILENO, &ch, 1) == 1) return ch;
+    return -1;
 }
 
 static void print_usage(const char *progname) {
@@ -23,7 +75,9 @@ static void print_usage(const char *progname) {
     printf("Usage: %s [options]\n\n", progname);
     printf("Options:\n");
     printf("  --script <file>  Run script file instead of interactive mode\n");
-    printf("  --batch          Batch mode: plain text output, no ANSI UI (for CI/agents)\n");
+    printf("  --batch          Batch mode: plain text output (for CI/scripts)\n");
+    printf("  --json           JSON output: one object per state change\n");
+    printf("  --json-stream    JSON stream: continuous output at fixed interval\n");
     printf("  --fast           Run in fast-forward mode (interactive only)\n");
     printf("  --help           Show this help message\n");
     printf("\n");
@@ -32,6 +86,7 @@ static void print_usage(const char *progname) {
     printf("  B          Toggle Button B\n");
     printf("  R          Reset time\n");
     printf("  F          Toggle fast/realtime mode\n");
+    printf("  L          Toggle legend\n");
     printf("  Q / ESC    Quit\n");
     printf("\n");
     printf("Script Format:\n");
@@ -42,40 +97,98 @@ static void print_usage(const char *progname) {
     printf("Actions: press, release, assert, log, quit\n");
     printf("Targets: a, b, cv, output\n");
     printf("\n");
-    printf("Example script:\n");
-    printf("  0       press   a\n");
-    printf("  100     release a\n");
-    printf("  50      assert  output high\n");
-    printf("  @500    quit\n");
-    printf("\n");
 }
 
-// Simplified main loop tick - just advances time and updates display
-static void sim_tick(void) {
-    // Advance time through HAL so scripts can track it
-    p_hal->advance_time(1);
+// Process keyboard input for interactive mode
+static bool process_keyboard_input(void) {
+    while (kb_kbhit()) {
+        int ch = kb_getch();
+        switch (ch) {
+            case 'a': case 'A':
+                sim_set_button_a(!sim_get_button_a());
+                sim_state_add_event(&sim_state, EVT_TYPE_INPUT, sim_get_time(),
+                    "Button A %s", sim_get_button_a() ? "pressed" : "released");
+                break;
 
-    // Real-time pacing if input source requests it
-    if (input_source && input_source->is_realtime(input_source)) {
-        usleep(1000);  // 1ms
+            case 'b': case 'B':
+                sim_set_button_b(!sim_get_button_b());
+                sim_state_add_event(&sim_state, EVT_TYPE_INPUT, sim_get_time(),
+                    "Button B %s", sim_get_button_b() ? "pressed" : "released");
+                break;
+
+            case 'r': case 'R':
+                p_hal->reset_time();
+                sim_state_add_event(&sim_state, EVT_TYPE_INFO, 0, "Time reset");
+                break;
+
+            case 'f': case 'F':
+                sim_state.realtime_mode = !sim_state.realtime_mode;
+                sim_state_add_event(&sim_state, EVT_TYPE_INFO, sim_get_time(),
+                    "Speed: %s", sim_state.realtime_mode ? "realtime" : "fast-forward");
+                sim_state_mark_dirty(&sim_state);
+                break;
+
+            case 'l': case 'L':
+                sim_state_toggle_legend(&sim_state);
+                break;
+
+            case 'q': case 'Q': case 27:  // ESC
+                return false;
+        }
+    }
+    return true;
+}
+
+// Update state tracking for state changes
+static void track_state_changes(Coordinator *coord) {
+    static TopState last_top_state = TOP_PERFORM;
+    static ModeState last_mode = MODE_GATE;
+    static MenuPage last_page = PAGE_GATE_CV;
+    static bool last_output = false;
+
+    TopState top_state = coordinator_get_top_state(coord);
+    ModeState mode = coordinator_get_mode(coord);
+    MenuPage page = coordinator_get_page(coord);
+    bool in_menu = coordinator_in_menu(coord);
+    bool output = coordinator_get_output(coord);
+
+    // Log state changes
+    if (top_state != last_top_state) {
+        sim_state_add_event(&sim_state, EVT_TYPE_STATE_CHANGE, sim_get_time(),
+            "State -> %s", sim_top_state_str(top_state));
+        last_top_state = top_state;
     }
 
-    // Update display periodically (skip in batch mode)
-    static uint32_t last_draw = 0;
-    uint32_t now = p_hal->millis();
-    uint32_t interval = (input_source && input_source->is_realtime(input_source)) ? 200 : 1000;
-    if (now - last_draw >= interval) {
-        sim_mark_dirty();  // Force redraw for time update
-        last_draw = now;
+    if (mode != last_mode) {
+        sim_state_add_event(&sim_state, EVT_TYPE_MODE_CHANGE, sim_get_time(),
+            "Mode -> %s", sim_mode_str(mode));
+        led_feedback_set_mode(&led_ctrl, mode);
+        last_mode = mode;
     }
 
-    // Refresh display if needed
-    sim_update_display();
+    if (in_menu && page != last_page) {
+        sim_state_add_event(&sim_state, EVT_TYPE_PAGE_CHANGE, sim_get_time(),
+            "Page -> %s", sim_page_str(page));
+        led_feedback_set_page(&led_ctrl, page);
+        last_page = page;
+    }
+
+    if (output != last_output) {
+        sim_state_add_event(&sim_state, EVT_TYPE_OUTPUT, sim_get_time(),
+            "Output -> %s", output ? "HIGH" : "LOW");
+        last_output = output;
+    }
+
+    // Update state struct
+    sim_state_set_fsm(&sim_state, top_state, mode, page, in_menu);
+    sim_state_set_output(&sim_state, output);
 }
 
 int main(int argc, char **argv) {
     bool fast_mode = false;
     bool batch_mode = false;
+    bool json_mode = false;
+    bool json_stream = false;
     const char *script_file = NULL;
 
     // Parse command line arguments
@@ -84,6 +197,11 @@ int main(int argc, char **argv) {
             fast_mode = true;
         } else if (strcmp(argv[i], "--batch") == 0) {
             batch_mode = true;
+        } else if (strcmp(argv[i], "--json") == 0) {
+            json_mode = true;
+        } else if (strcmp(argv[i], "--json-stream") == 0) {
+            json_mode = true;
+            json_stream = true;
         } else if (strcmp(argv[i], "--script") == 0) {
             if (i + 1 >= argc) {
                 fprintf(stderr, "Error: --script requires a filename\n");
@@ -118,18 +236,31 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Set batch mode before init (affects terminal setup)
-    if (batch_mode) {
-        sim_set_batch_mode(true);
+    // Create renderer based on mode
+    if (json_mode) {
+        renderer = render_json_create(json_stream);
+    } else if (batch_mode) {
+        renderer = render_batch_create();
+    } else {
+        renderer = render_terminal_create();
+        enable_raw_mode();
     }
 
-    // Initialize simulator display
-    sim_init();
-
-    // Set realtime mode based on input source (scripts run fast by default)
-    if (fast_mode || !input_source->is_realtime(input_source)) {
-        sim_set_realtime(false);
+    if (!renderer) {
+        fprintf(stderr, "Error: Failed to create renderer\n");
+        input_source->cleanup(input_source);
+        return 1;
     }
+
+    // Initialize state
+    sim_state_init(&sim_state);
+
+    // Set initial mode based on input source
+    bool realtime = !fast_mode && input_source->is_realtime(input_source);
+    sim_state_set_realtime(&sim_state, realtime);
+
+    // Initialize renderer
+    renderer->init(renderer);
 
     // Point global HAL to simulator HAL
     p_hal = sim_get_hal();
@@ -142,9 +273,9 @@ int main(int argc, char **argv) {
     AppInitResult init_result = app_init_run(&settings);
 
     if (init_result == APP_INIT_OK_FACTORY_RESET) {
-        sim_log_event("Factory reset performed");
+        sim_state_add_event(&sim_state, EVT_TYPE_INFO, sim_get_time(), "Factory reset performed");
     } else if (init_result == APP_INIT_OK_DEFAULTS) {
-        sim_log_event("Using default settings");
+        sim_state_add_event(&sim_state, EVT_TYPE_INFO, sim_get_time(), "Using default settings");
     }
 
     // Initialize coordinator
@@ -159,11 +290,24 @@ int main(int argc, char **argv) {
     // Start coordinator
     coordinator_start(&coordinator);
 
-    sim_log_event("App initialized, mode=%d", coordinator_get_mode(&coordinator));
+    // Initialize LED feedback controller
+    led_feedback_init(&led_ctrl);
+    led_feedback_set_mode(&led_ctrl, coordinator_get_mode(&coordinator));
+
+    sim_state_add_event(&sim_state, EVT_TYPE_INFO, sim_get_time(),
+        "App initialized, mode=%s", sim_mode_str(coordinator_get_mode(&coordinator)));
 
     // Main loop
+    uint32_t last_render = 0;
     while (running) {
-        // Process input
+        // Process input from keyboard (for interactive terminal mode)
+        if (!batch_mode && !json_mode && !script_file) {
+            if (!process_keyboard_input()) {
+                break;
+            }
+        }
+
+        // Process input from input source (scripts or keyboard adapter)
         if (!input_source->update(input_source, p_hal->millis())) {
             break;
         }
@@ -178,16 +322,72 @@ int main(int argc, char **argv) {
             p_hal->clear_pin(p_hal->sig_out_pin);
         }
 
-        // Advance time and handle display
-        sim_tick();
+        // Track state changes and update sim_state
+        track_state_changes(&coordinator);
+
+        // Update LED feedback from mode handler
+        LEDFeedback feedback;
+        coordinator_get_led_feedback(&coordinator, &feedback);
+
+        // Track menu state for LED animations
+        static bool was_in_menu = false;
+        bool in_menu = coordinator_in_menu(&coordinator);
+        if (in_menu && !was_in_menu) {
+            led_feedback_enter_menu(&led_ctrl, coordinator_get_page(&coordinator));
+        } else if (!in_menu && was_in_menu) {
+            led_feedback_exit_menu(&led_ctrl);
+        }
+        was_in_menu = in_menu;
+
+        // Update LED animations
+        led_feedback_update(&led_ctrl, &feedback, p_hal->millis());
+
+        // Update input/output state in sim_state
+        sim_state_set_inputs(&sim_state,
+            sim_get_button_a(),
+            sim_get_button_b(),
+            false);  // CV not implemented
+
+        // Update LED state in sim_state
+        for (int i = 0; i < SIM_NUM_LEDS; i++) {
+            uint8_t r, g, b;
+            sim_get_led(i, &r, &g, &b);
+            sim_state_set_led(&sim_state, i, r, g, b);
+        }
+
+        // Update timestamp
+        sim_state_set_time(&sim_state, p_hal->millis());
+
+        // Advance time
+        p_hal->advance_time(1);
+
+        // Real-time pacing if needed
+        if (sim_state.realtime_mode && input_source->is_realtime(input_source)) {
+            usleep(1000);  // 1ms
+        }
+
+        // Render periodically or on state change
+        uint32_t now = p_hal->millis();
+        uint32_t render_interval = sim_state.realtime_mode ? 100 : 500;
+
+        if (sim_state_is_dirty(&sim_state) || (now - last_render >= render_interval)) {
+            renderer->render(renderer, &sim_state);
+            sim_state_clear_dirty(&sim_state);
+            last_render = now;
+        }
     }
 
     // Get result before cleanup
     bool failed = input_source->has_failed(input_source);
 
     // Cleanup
+    renderer->cleanup(renderer);
+    render_destroy(renderer);
     input_source->cleanup(input_source);
-    sim_cleanup();
+
+    if (!batch_mode && !json_mode) {
+        disable_raw_mode();
+    }
 
     // Return non-zero exit code if any assertions failed
     return failed ? 1 : 0;

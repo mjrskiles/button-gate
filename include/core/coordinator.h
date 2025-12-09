@@ -87,6 +87,14 @@ void coordinator_start(Coordinator *coord);
 void coordinator_update(Coordinator *coord);
 
 /**
+ * Get the top-level FSM state.
+ *
+ * @param coord Pointer to Coordinator struct
+ * @return      Current TopState (TOP_PERFORM or TOP_MENU)
+ */
+TopState coordinator_get_top_state(const Coordinator *coord);
+
+/**
  * Get the current operating mode.
  *
  * @param coord Pointer to Coordinator struct

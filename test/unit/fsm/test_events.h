@@ -152,41 +152,52 @@ TEST(EventProcessorTests, TestEventCVFall) {
 }
 
 TEST(EventProcessorTests, TestEventMenuEnter) {
-    // Press A
+    // Menu Enter: A pressed first, then B held for threshold
+    // Press A first
     input.button_a = true;
     input.current_time = 100;
     event_processor_update(&ep, &input);
 
-    // Hold A past threshold
-    input.current_time = 100 + EP_HOLD_THRESHOLD_MS;
-    event_processor_update(&ep, &input);
-
-    // Tap B while A is held
+    // Press B while A is still held (A was pressed first)
     input.button_b = true;
-    input.current_time = 100 + EP_HOLD_THRESHOLD_MS + 50;
+    input.current_time = 200;
     event_processor_update(&ep, &input);
 
-    // Release B (this triggers menu enter)
-    input.button_b = false;
-    input.current_time = 100 + EP_HOLD_THRESHOLD_MS + 100;
+    // A reaches hold threshold first (A was pressed 100ms earlier)
+    input.current_time = 100 + EP_HOLD_THRESHOLD_MS;
+    Event evt_a = event_processor_update(&ep, &input);
+    TEST_ASSERT_EQUAL(EVT_A_HOLD, evt_a);
 
+    // B reaches hold threshold - this triggers menu enter
+    // (because A was pressed before B)
+    input.current_time = 200 + EP_HOLD_THRESHOLD_MS;
     Event evt = event_processor_update(&ep, &input);
 
     TEST_ASSERT_EQUAL(EVT_MENU_ENTER, evt);
 }
 
 TEST(EventProcessorTests, TestEventModeChange) {
-    // Press both buttons
-    input.button_a = true;
+    // Mode Change: B pressed first, then A held for threshold
+    // Press B first
     input.button_b = true;
     input.current_time = 100;
     event_processor_update(&ep, &input);
 
-    // Hold both past threshold - A reaches threshold first
+    // Press A while B is still held (B was pressed first)
+    input.button_a = true;
+    input.current_time = 200;
+    event_processor_update(&ep, &input);
+
+    // B reaches hold threshold first (B was pressed 100ms earlier)
     input.current_time = 100 + EP_HOLD_THRESHOLD_MS;
+    Event evt_b = event_processor_update(&ep, &input);
+    TEST_ASSERT_EQUAL(EVT_B_HOLD, evt_b);
+
+    // A reaches hold threshold - this triggers mode change
+    // (because B was pressed before A)
+    input.current_time = 200 + EP_HOLD_THRESHOLD_MS;
     Event evt = event_processor_update(&ep, &input);
 
-    // When second hold fires, mode change is detected
     TEST_ASSERT_EQUAL(EVT_MODE_CHANGE, evt);
 }
 
