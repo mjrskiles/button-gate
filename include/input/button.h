@@ -99,20 +99,25 @@ void button_reset(Button *button);
 void button_update(Button *button);
 
 /**
- * Consume the config action flag.
+ * LEGACY: Consume the config action flag.
  *
- * Call after handling a config action to clear the flag.
- * Prevents the action from being processed multiple times.
+ * NOTE: This function is part of the legacy 5-tap config gesture system.
+ * Mode changes now use compound gestures (EVT_MODE_NEXT) via the event
+ * processor in src/events/events.c. Retained for potential alternate builds.
  *
  * @param button  Pointer to Button struct
  */
 void button_consume_config_action(Button *button);
 
 /**
- * Check for config action gesture.
+ * LEGACY: Check for config action gesture.
  *
- * Detects the 5-tap + 1-second-hold gesture used to change modes.
- * Called internally by button_update().
+ * NOTE: This function is NOT currently used by the coordinator.
+ * Mode changes now use compound gestures (hold B, then hold A) detected
+ * by the event processor. See EVT_MODE_NEXT in include/events/events.h.
+ *
+ * Original behavior: Detects 5-tap + 1-second-hold gesture.
+ * Retained for potential alternate builds or future use.
  *
  * @param button  Pointer to Button struct
  * @return        true if config action detected this cycle

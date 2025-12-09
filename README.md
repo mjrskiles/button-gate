@@ -21,14 +21,16 @@ This project is designed as a reference for those learning synth/modular DIY and
 - **Debounced Input:**
   Robust button state detection with rising and falling edge detection.
 
-- **Configuration Action:**
-  Change operating modes by tapping the button several times in quick succession and holding on the final tap.
+- **Configuration Gestures:**
+  - **Menu Toggle:** Hold Button A, then hold Button B (500ms each) to enter/exit menu
+  - **Mode Change:** Hold Button B, then hold Button A (500ms each) to cycle modes
+  - **Menu Navigation:** Tap Button A to change page, tap Button B to cycle values
 
 - **Hardware Abstraction Layer (HAL):**
   Clean interface for hardware access, enabling comprehensive unit testing on the host machine.
 
 - **Unit Testing:**
-  159 tests using the Unity framework verify functionality without hardware.
+  171 tests using the Unity framework verify functionality without hardware.
 
 - **x86 Simulator:**
   Interactive terminal UI or headless JSON output for testing without hardware.
@@ -49,9 +51,9 @@ This project is designed as a reference for those learning synth/modular DIY and
 |-----|----------|
 | PB0 | Neopixel data |
 | PB1 | CV output |
-| PB2 | Button A |
-| PB3 | CV input |
-| PB4 | Button B |
+| PB2 | Button A (menu/secondary) |
+| PB3 | CV input (analog via ADC) |
+| PB4 | Button B (primary/gate control) |
 | PB5 | RESET |
 
 Output LED is driven directly from the buffered output circuit, not GPIO.
@@ -79,12 +81,12 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed documentation incl
 
 **Firmware build:**
 - AVR-GCC toolchain (`avr-gcc`, `avr-objcopy`, `avr-size`, `avr-strip`)
-- CMake 3.16+
+- CMake 3.25+
 - Optional: `avrdude` (flashing), `bc` + `avr-nm` (size analysis)
 
 **Test/Simulator build** (no AVR toolchain needed):
 - GCC (host compiler)
-- CMake 3.16+
+- CMake 3.25+
 
 Install on Debian/Ubuntu:
 ```bash
@@ -98,15 +100,32 @@ sudo apt install gcc-avr avr-libc cmake
 sudo apt install gcc-avr avr-libc binutils-avr avrdude cmake bc
 ```
 
-### Quick Start
+### Quick Start (CMake Presets)
 
 ```bash
-# Build firmware (with size analysis)
+# List available presets
+cmake --list-presets
+
+# Build firmware
+cmake --preset firmware && cmake --build --preset firmware
+
+# Build and run tests
+cmake --preset tests && cmake --build --preset tests
+ctest --preset tests
+
+# Build and run x86 simulator
+cmake --preset sim && cmake --build --preset sim
+./build_sim/sim/gatekeeper-sim
+```
+
+The firmware build runs a post-build size analysis showing flash/RAM usage and largest symbols.
+
+### Legacy Build (CMake < 3.25)
+
+```bash
+# Build firmware
 mkdir build && cd build
 cmake .. && make
-
-# Build firmware (minimal, no analysis dependencies)
-cmake -DSIZE_REPORT=OFF .. && make
 
 # Build and run tests
 mkdir build_tests && cd build_tests
@@ -118,8 +137,6 @@ mkdir build_sim && cd build_sim
 cmake -DBUILD_SIM=ON .. && make
 ./sim/gatekeeper-sim
 ```
-
-The default build runs a post-build size analysis showing flash/RAM usage and largest symbols. If `bc` is not installed, the build will warn and fall back to basic `avr-size` output.
 
 ### x86 Simulator
 

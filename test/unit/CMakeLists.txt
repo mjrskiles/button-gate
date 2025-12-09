@@ -34,3 +34,9 @@ target_include_directories(${PROJECT_NAME}_unit_tests PRIVATE
 target_link_libraries(${PROJECT_NAME}_unit_tests PRIVATE
     unity::framework
 )
+
+# Register with CTest
+add_test(
+    NAME unit_tests
+    COMMAND ${PROJECT_NAME}_unit_tests
+)

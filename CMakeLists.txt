@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 
 # Build options
 option(BUILD_TESTS "Build test suite" OFF)
@@ -75,6 +75,9 @@ if(BUILD_TESTS)
     # Add Unity test framework
     set(UNITY_EXTENSION_FIXTURE ON)
     add_subdirectory(external/Unity)
+
+    # Enable CTest
+    enable_testing()
     add_subdirectory(test/unit)
 elseif(BUILD_SIM)
     # Simulator build configuration

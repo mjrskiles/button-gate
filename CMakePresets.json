@@ -1,0 +1,71 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build_${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "firmware",
+      "displayName": "Firmware (AVR)",
+      "description": "ATtiny85 firmware build",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build"
+    },
+    {
+      "name": "tests",
+      "displayName": "Unit Tests (x86)",
+      "description": "Host build with Unity test framework",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "sim",
+      "displayName": "Simulator (x86)",
+      "description": "Interactive x86 simulator with terminal UI",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_SIM": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "firmware",
+      "configurePreset": "firmware",
+      "displayName": "Build Firmware"
+    },
+    {
+      "name": "tests",
+      "configurePreset": "tests",
+      "displayName": "Build Tests"
+    },
+    {
+      "name": "sim",
+      "configurePreset": "sim",
+      "displayName": "Build Simulator"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "tests",
+      "configurePreset": "tests",
+      "displayName": "Run Unit Tests",
+      "output": {
+        "verbosity": "default"
+      }
+    }
+  ]
+}

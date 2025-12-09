@@ -195,7 +195,7 @@ struct; they share memory via a union since only one is active at a time.
 | Trigger | Rising edge triggers fixed-duration pulse (default 10ms) |
 | Toggle  | Rising edge flips output state |
 | Divide  | Output pulse every N inputs (clock divider, default N=2) |
-| Cycle   | Internal clock generator (default 120 BPM) |
+| Cycle   | Internal clock generator (default 80 BPM) |
 
 **LED Feedback**: Each mode has a distinct color on the mode LED:
 - Gate: Green
