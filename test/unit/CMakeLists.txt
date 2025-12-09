@@ -9,6 +9,7 @@ file(GLOB_RECURSE TEST_SOURCES
 add_executable(${PROJECT_NAME}_unit_tests
     ${TEST_SOURCES}
     ${CMAKE_SOURCE_DIR}/src/input/button.c
+    ${CMAKE_SOURCE_DIR}/src/input/cv_input.c
     ${CMAKE_SOURCE_DIR}/src/output/cv_output.c
     ${CMAKE_SOURCE_DIR}/src/output/led_animation.c
     ${CMAKE_SOURCE_DIR}/src/output/led_feedback.c

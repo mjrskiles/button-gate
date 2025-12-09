@@ -5,6 +5,7 @@
 #include "hardware/hal_interface.h"
 #include "app_init.h"
 #include "core/coordinator.h"
+#include "input/cv_input.h"
 #include "output/led_feedback.h"
 #include "output/neopixel.h"
 
@@ -13,7 +14,6 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-#include <termios.h>
 #include <sys/select.h>
 
 /**
@@ -30,30 +30,9 @@ static Renderer *renderer = NULL;
 static SimState sim_state;
 static LEDFeedbackController led_ctrl;
 
-// For keyboard input in terminal mode
-static struct termios orig_termios;
-static bool terminal_raw = false;
-
 static void handle_signal(int sig) {
     (void)sig;
     running = false;
-}
-
-static void enable_raw_mode(void) {
-    if (terminal_raw) return;
-    tcgetattr(STDIN_FILENO, &orig_termios);
-    struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ECHO | ICANON);
-    raw.c_cc[VMIN] = 0;
-    raw.c_cc[VTIME] = 0;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-    terminal_raw = true;
-}
-
-static void disable_raw_mode(void) {
-    if (!terminal_raw) return;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
-    terminal_raw = false;
 }
 
 static int kb_kbhit(void) {
@@ -70,6 +49,9 @@ static int kb_getch(void) {
     return -1;
 }
 
+// CV voltage step size for +/- keys (in ADC units, ~0.2V per step)
+#define CV_VOLTAGE_STEP 10
+
 static void print_usage(const char *progname) {
     printf("Gatekeeper x86 Simulator\n\n");
     printf("Usage: %s [options]\n\n", progname);
@@ -84,6 +66,8 @@ static void print_usage(const char *progname) {
     printf("Interactive Controls:\n");
     printf("  A          Toggle Button A\n");
     printf("  B          Toggle Button B\n");
+    printf("  C          Toggle CV input (0V <-> 5V)\n");
+    printf("  +/-        Adjust CV voltage (+/- 0.2V)\n");
     printf("  R          Reset time\n");
     printf("  F          Toggle fast/realtime mode\n");
     printf("  L          Toggle legend\n");
@@ -115,6 +99,37 @@ static bool process_keyboard_input(void) {
                 sim_state_add_event(&sim_state, EVT_TYPE_INPUT, sim_get_time(),
                     "Button B %s", sim_get_button_b() ? "pressed" : "released");
                 break;
+
+            case 'c': case 'C': {
+                // Toggle CV between 0V and 5V
+                uint8_t current = sim_get_cv_voltage();
+                uint8_t new_voltage = (current < 128) ? 255 : 0;
+                sim_set_cv_voltage(new_voltage);
+                uint16_t mv = cv_adc_to_millivolts(new_voltage);
+                sim_state_add_event(&sim_state, EVT_TYPE_INPUT, sim_get_time(),
+                    "CV -> %u.%uV", mv / 1000, (mv % 1000) / 100);
+                break;
+            }
+
+            case '+': case '=': {
+                // Increase CV voltage
+                sim_adjust_cv_voltage(CV_VOLTAGE_STEP);
+                uint8_t voltage = sim_get_cv_voltage();
+                uint16_t mv = cv_adc_to_millivolts(voltage);
+                sim_state_add_event(&sim_state, EVT_TYPE_INPUT, sim_get_time(),
+                    "CV -> %u.%uV", mv / 1000, (mv % 1000) / 100);
+                break;
+            }
+
+            case '-': case '_': {
+                // Decrease CV voltage
+                sim_adjust_cv_voltage(-CV_VOLTAGE_STEP);
+                uint8_t voltage = sim_get_cv_voltage();
+                uint16_t mv = cv_adc_to_millivolts(voltage);
+                sim_state_add_event(&sim_state, EVT_TYPE_INPUT, sim_get_time(),
+                    "CV -> %u.%uV", mv / 1000, (mv % 1000) / 100);
+                break;
+            }
 
             case 'r': case 'R':
                 p_hal->reset_time();
@@ -243,7 +258,6 @@ int main(int argc, char **argv) {
         renderer = render_batch_create();
     } else {
         renderer = render_terminal_create();
-        enable_raw_mode();
     }
 
     if (!renderer) {
@@ -343,10 +357,13 @@ int main(int argc, char **argv) {
         led_feedback_update(&led_ctrl, &feedback, p_hal->millis());
 
         // Update input/output state in sim_state
+        // Get CV digital state from coordinator's cv_input (after hysteresis)
+        bool cv_digital = cv_input_get_state(&coordinator.cv_input);
         sim_state_set_inputs(&sim_state,
             sim_get_button_a(),
             sim_get_button_b(),
-            false);  // CV not implemented
+            cv_digital,
+            sim_get_cv_voltage());
 
         // Update LED state in sim_state
         for (int i = 0; i < SIM_NUM_LEDS; i++) {
@@ -384,10 +401,6 @@ int main(int argc, char **argv) {
     renderer->cleanup(renderer);
     render_destroy(renderer);
     input_source->cleanup(input_source);
-
-    if (!batch_mode && !json_mode) {
-        disable_raw_mode();
-    }
 
     // Return non-zero exit code if any assertions failed
     return failed ? 1 : 0;

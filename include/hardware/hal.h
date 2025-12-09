@@ -44,6 +44,10 @@ void hal_eeprom_write_byte(uint16_t addr, uint8_t value);
 uint16_t hal_eeprom_read_word(uint16_t addr);
 void hal_eeprom_write_word(uint16_t addr, uint16_t value);
 
+// ADC functions (for analog CV input per ADR-004)
+void hal_init_adc(void);
+uint8_t hal_adc_read(uint8_t channel);
+
 #endif /* GK_HARDWARE_HAL_H */
 
 

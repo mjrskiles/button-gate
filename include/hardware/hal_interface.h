@@ -55,6 +55,9 @@ typedef struct HalInterface {
     void     (*eeprom_write_byte)(uint16_t addr, uint8_t value);
     uint16_t (*eeprom_read_word)(uint16_t addr);
     void     (*eeprom_write_word)(uint16_t addr, uint16_t value);
+
+    // ADC functions (for analog CV input per ADR-004)
+    uint8_t  (*adc_read)(uint8_t channel);  // Read 8-bit ADC value (0-255)
 } HalInterface;
 
 // Global pointer to the current HAL implementation.

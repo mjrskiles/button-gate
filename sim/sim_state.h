@@ -64,7 +64,8 @@ typedef struct {
     // Inputs
     bool button_a;
     bool button_b;
-    bool cv_in;
+    bool cv_in;             // Digital CV state (after hysteresis)
+    uint8_t cv_voltage;     // Raw CV voltage (0-255 ADC value)
 
     // Outputs
     bool signal_out;
@@ -98,7 +99,7 @@ void sim_state_set_fsm(SimState *state, TopState top, ModeState mode, MenuPage p
 /**
  * Update input states.
  */
-void sim_state_set_inputs(SimState *state, bool btn_a, bool btn_b, bool cv);
+void sim_state_set_inputs(SimState *state, bool btn_a, bool btn_b, bool cv_digital, uint8_t cv_voltage);
 
 /**
  * Update output state.

@@ -103,14 +103,14 @@ Event event_processor_update(EventProcessor *ep, const EventInput *input) {
         if (event == EVT_B_HOLD &&
             STATUS_ANY(ep->status, EP_A_PRESSED) &&
             ep->a_press_time < ep->b_press_time) {
-            event = EVT_MENU_ENTER;
+            event = EVT_MENU_TOGGLE;
             ep->ext_status |= EP_COMPOUND_FIRED;
         }
         // A just reached hold while B is pressed, and B was pressed first
         else if (event == EVT_A_HOLD &&
                  STATUS_ANY(ep->status, EP_B_PRESSED) &&
                  ep->b_press_time < ep->a_press_time) {
-            event = EVT_MODE_CHANGE;
+            event = EVT_MODE_NEXT;
             ep->ext_status |= EP_COMPOUND_FIRED;
         }
     }

@@ -8,10 +8,9 @@
 
 /**
  * @file neopixel.c
- * @brief WS2812B driver for ATtiny85 at 1 MHz
+ * @brief WS2812B driver for ATtiny85 at 8 MHz
  *
  * Bit-banged driver with cycle-accurate timing for WS2812B LEDs.
- * At 1 MHz, each cycle is 1µs, which is challenging for WS2812B timing.
  *
  * WS2812B timing requirements:
  * - T0H: 350ns ±150ns (0.2-0.5µs)
@@ -20,10 +19,23 @@
  * - T1L: 600ns ±150ns (0.45-0.75µs)
  * - Reset: >50µs
  *
- * At 1 MHz (1µs per cycle), we have very limited granularity.
- * We use the shortest possible pulses and rely on the generous tolerances.
- *
  * Data pin: PB0
+ *
+ * TIMING IMPACT (Klaus audit):
+ * Interrupts are disabled during neopixel_flush() to maintain bit timing.
+ * With 2 Neopixels (6 bytes), transmission takes approximately:
+ *   6 bytes * 8 bits * ~10 cycles/bit = 480 cycles
+ *   At 8 MHz: ~60µs with interrupts disabled
+ *   Plus 60µs reset pulse = ~120µs total
+ *
+ * This is well under the 1ms Timer0 tick, so missed interrupts are unlikely
+ * during normal LED updates. However, if this driver is modified to support
+ * more LEDs (e.g., 8+), timing drift could become noticeable.
+ *
+ * For 2 LEDs: Impact negligible (0.012% of time with interrupts off)
+ * For 8 LEDs: ~240µs = 0.024% - still acceptable
+ * For 30+ LEDs: Consider compensating for missed ticks or using a
+ *               hardware timer for more critical timing.
  */
 
 // Neopixel data pin
@@ -131,10 +143,18 @@ static void send_byte(uint8_t byte) {
     );
 }
 
+/**
+ * Transmit LED buffer to Neopixel chain.
+ *
+ * NOTE: Interrupts are disabled during transmission (~60µs for 2 LEDs).
+ * See file header for timing impact analysis. For 2 LEDs this is
+ * well under the 1ms timer tick and has negligible impact.
+ */
 void neopixel_flush(void) {
     if (!buffer_dirty) return;
 
     // Disable interrupts for timing-critical transmission
+    // (~60µs for 2 LEDs at 8 MHz - see timing analysis in file header)
     uint8_t sreg = SREG;
     cli();
 
@@ -146,7 +166,7 @@ void neopixel_flush(void) {
     // Restore interrupt state
     SREG = sreg;
 
-    // Reset pulse (>50µs low)
+    // Reset pulse (>50µs low) - interrupts are enabled here
     _delay_us(60);
 
     buffer_dirty = false;

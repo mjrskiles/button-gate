@@ -24,6 +24,7 @@ static HalInterface default_hal = {
     .eeprom_write_byte  = hal_eeprom_write_byte,
     .eeprom_read_word   = hal_eeprom_read_word,
     .eeprom_write_word  = hal_eeprom_write_word,
+    .adc_read           = hal_adc_read,
 };
 
 HalInterface *p_hal = &default_hal;
@@ -35,16 +36,13 @@ HalInterface *p_hal = &default_hal;
  * - PB0: Neopixel data (output, directly driven)
  * - PB1: CV output (output)
  * - PB2: Button A (input, no pull-up - external pull-down)
- * - PB3: CV input (input, future use)
+ * - PB3: CV input (analog input via ADC3, per ADR-004)
  * - PB4: Button B (input, no pull-up - external pull-down)
  * - PB5: RESET (reserved)
  *
- * Also initializes Timer0 for millisecond timing.
+ * Also initializes Timer0 for millisecond timing and ADC for CV input.
  */
 void hal_init(void) {
-    // Disable ADC to ensure that all pins function as digital I/O
-    ADCSRA &= ~(1 << ADEN);
-
     // Configure button pins as inputs
     DDRB &= ~((1 << BUTTON_A_PIN) | (1 << BUTTON_B_PIN));
 
@@ -59,11 +57,14 @@ void hal_init(void) {
     DDRB |= (1 << NEOPIXEL_PIN);
     PORTB &= ~(1 << NEOPIXEL_PIN);
 
-    // CV input pin as input (future use)
+    // CV input pin as input (directly read by ADC, no digital buffer needed)
     DDRB &= ~(1 << CV_IN_PIN);
 
-    // Initialize Timer0
+    // Initialize Timer0 for millisecond timing
     hal_init_timer0();
+
+    // Initialize ADC for CV input (per ADR-004)
+    hal_init_adc();
 }
 
 /**
@@ -103,8 +104,29 @@ uint8_t hal_read_pin(uint8_t pin) {
     return (PINB & (1 << pin)) != 0;
 }
 
-// Global variable to keep track of milliseconds
-static volatile uint32_t timer0_millis = 0;
+// =============================================================================
+// Timer0 Millisecond Counter
+// =============================================================================
+//
+// ATOMICITY FIX (Klaus audit):
+// On 8-bit AVR, incrementing a 32-bit variable is NOT atomic - it compiles to
+// multiple load/add/store instructions. If the ISR fires mid-increment during
+// a read from main code, corrupted values can result.
+//
+// Solution: Use 16-bit counter in ISR (atomic on AVR) + extend to 32-bit in
+// hal_millis(). The 16-bit counter overflows every ~65 seconds, which we
+// detect and handle in the main-thread read function.
+//
+// =============================================================================
+
+// Low 16 bits: incremented in ISR (atomic on AVR - single instruction)
+static volatile uint16_t timer0_millis_low = 0;
+
+// High 16 bits: extended in hal_millis() (only accessed with interrupts disabled)
+static uint16_t timer0_millis_high = 0;
+
+// Track previous low value to detect overflow
+static uint16_t timer0_millis_last = 0;
 
 // Timer configuration - derived from F_CPU (set in CMakeLists.txt)
 #ifndef F_CPU
@@ -146,27 +168,39 @@ void hal_init_timer0(void) {
 }
 
 /**
- * Timer0 compare match interrupt handler
- * Increments millisecond counter
+ * Timer0 compare match interrupt handler.
+ * Increments 16-bit millisecond counter (atomic on AVR).
  */
 ISR(TIMER0_COMPA_vect) {
-    timer0_millis++;
+    timer0_millis_low++;  // Single instruction on AVR - atomic
 }
 
 /**
- * Returns the number of milliseconds since the program started
- * 
+ * Returns the number of milliseconds since the program started.
+ *
+ * Extends 16-bit ISR counter to 32-bit by detecting overflows.
+ * Must be called at least once every 65 seconds to catch overflows.
+ * (In practice, main loop runs at 1kHz, so this is never an issue.)
+ *
  * @return Number of milliseconds since program start
  */
 uint32_t hal_millis(void) {
-    uint32_t m;
-    
-    // Disable interrupts while reading timer0_millis
+    uint16_t low;
+
+    // Read low word with interrupts disabled (single 16-bit read is atomic,
+    // but we need consistent state for overflow detection)
     cli();
-    m = timer0_millis;
+    low = timer0_millis_low;
+
+    // Detect overflow: if low < last, the counter wrapped
+    if (low < timer0_millis_last) {
+        timer0_millis_high++;
+    }
+    timer0_millis_last = low;
+
     sei();
-    
-    return m;
+
+    return ((uint32_t)timer0_millis_high << 16) | low;
 }
 
 /**
@@ -190,16 +224,21 @@ void hal_delay_ms(uint32_t ms) {
 }
 
 void hal_advance_time(uint32_t ms) {
-    // Disable interrupts while updating timer0_millis
+    // For testing: directly manipulate the 32-bit time
     cli();
-    timer0_millis += ms;
+    uint32_t current = ((uint32_t)timer0_millis_high << 16) | timer0_millis_low;
+    current += ms;
+    timer0_millis_high = (uint16_t)(current >> 16);
+    timer0_millis_low = (uint16_t)(current & 0xFFFF);
+    timer0_millis_last = timer0_millis_low;
     sei();
 }
 
 void hal_reset_time(void) {
-    // Disable interrupts while updating timer0_millis
     cli();
-    timer0_millis = 0;
+    timer0_millis_low = 0;
+    timer0_millis_high = 0;
+    timer0_millis_last = 0;
     sei();
 }
 
@@ -243,4 +282,77 @@ uint16_t hal_eeprom_read_word(uint16_t addr) {
  */
 void hal_eeprom_write_word(uint16_t addr, uint16_t value) {
     eeprom_update_word((uint16_t *)addr, value);
+}
+
+// =============================================================================
+// ADC Functions (per ADR-004)
+// =============================================================================
+
+// ADC channel for CV input (PB3 = ADC3)
+#define ADC_CHANNEL_CV 3
+
+// ADC prescaler for 8MHz clock -> 1MHz ADC clock (need 50-200kHz for accuracy)
+// Prescaler /8 gives 1MHz, which is at the upper limit but acceptable for 8-bit
+// Prescaler /64 gives 125kHz, which is more accurate but slower
+#define ADC_PRESCALER_64 ((1 << ADPS2) | (1 << ADPS1))
+
+/**
+ * Initializes the ADC for CV input reading.
+ *
+ * Configuration per ADR-004:
+ * - Left-adjust result (ADLAR=1) for easy 8-bit reads from ADCH
+ * - VCC as reference voltage (0-5V range)
+ * - Prescaler /64 for ~125kHz ADC clock at 8MHz system clock
+ *
+ * Note: Does not start a conversion - call hal_adc_read() for that.
+ */
+void hal_init_adc(void) {
+    // Set reference to VCC, left-adjust result for 8-bit reads
+    // MUX bits will be set in hal_adc_read()
+    ADMUX = (1 << ADLAR);
+
+    // Enable ADC with prescaler /64 (125kHz ADC clock at 8MHz)
+    ADCSRA = (1 << ADEN) | ADC_PRESCALER_64;
+
+    // Disable digital input buffer on ADC3 (PB3) to reduce power consumption
+    DIDR0 |= (1 << ADC3D);
+}
+
+// ADC timeout: ~200 iterations at 8MHz with /64 prescaler gives ~1.6ms
+// Normal conversion takes ~104us, so 1000 iterations is plenty of margin
+#define ADC_TIMEOUT_ITERATIONS 1000
+
+// Fallback value if ADC times out (mid-scale)
+#define ADC_TIMEOUT_VALUE 128
+
+/**
+ * Reads an 8-bit value from the specified ADC channel.
+ *
+ * Performs a single conversion and returns the result.
+ * Blocking call - takes ~13 ADC clock cycles (~104us at 125kHz).
+ * Includes timeout to prevent infinite loop on hardware failure.
+ *
+ * @param channel ADC channel to read (0-3 on ATtiny85)
+ * @return 8-bit ADC value (0-255, representing 0-5V), or ADC_TIMEOUT_VALUE on timeout
+ */
+uint8_t hal_adc_read(uint8_t channel) {
+    // Select channel (preserve ADLAR and REFS bits)
+    ADMUX = (ADMUX & 0xF0) | (channel & 0x0F);
+
+    // Start conversion
+    ADCSRA |= (1 << ADSC);
+
+    // Wait for conversion to complete with timeout
+    uint16_t timeout = ADC_TIMEOUT_ITERATIONS;
+    while ((ADCSRA & (1 << ADSC)) && --timeout) {
+        // Busy wait with escape hatch
+    }
+
+    // Return mid-scale on timeout (fail-safe: CV input reads as ~2.5V)
+    if (timeout == 0) {
+        return ADC_TIMEOUT_VALUE;
+    }
+
+    // Return 8-bit result (left-adjusted, so read ADCH only)
+    return ADCH;
 }

@@ -111,4 +111,18 @@ void mock_eeprom_clear(void);
  */
 uint16_t mock_eeprom_size(void);
 
+/**
+ * @brief Mock ADC read (per ADR-004)
+ * @param channel ADC channel to read (0-3)
+ * @return 8-bit ADC value (0-255)
+ */
+uint8_t mock_adc_read(uint8_t channel);
+
+/**
+ * @brief Set the mock ADC value for a channel
+ * @param channel ADC channel (0-3)
+ * @param value 8-bit ADC value to return on read
+ */
+void mock_adc_set_value(uint8_t channel, uint8_t value);
+
 #endif /* GK_TEST_MOCKS_MOCK_HAL_H */

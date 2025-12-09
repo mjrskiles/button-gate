@@ -10,6 +10,10 @@ static uint32_t vmock_millis = 0;
 #define MOCK_EEPROM_SIZE 512
 static uint8_t mock_eeprom[MOCK_EEPROM_SIZE];
 
+// Mock ADC values (4 channels on ATtiny85)
+#define MOCK_ADC_CHANNELS 4
+static uint8_t mock_adc_values[MOCK_ADC_CHANNELS] = {0};
+
 // The mock interface instance
 // Note: Pin assignments use unique values for testability, even though
 // Rev2 hardware shares pins (Neopixels on PB0, output LED from buffer).
@@ -35,6 +39,7 @@ static HalInterface mock_hal = {
     .eeprom_write_byte  = mock_eeprom_write_byte,
     .eeprom_read_word   = mock_eeprom_read_word,
     .eeprom_write_word  = mock_eeprom_write_word,
+    .adc_read           = mock_adc_read,
 };
 
 HalInterface *p_hal = &mock_hal;
@@ -50,6 +55,8 @@ void mock_hal_init(void) {
     vmock_millis = 0;
     // Initialize EEPROM to 0xFF (erased state)
     memset(mock_eeprom, 0xFF, MOCK_EEPROM_SIZE);
+    // Clear ADC values
+    memset(mock_adc_values, 0, MOCK_ADC_CHANNELS);
 }
 
 void mock_set_pin(uint8_t pin) {
@@ -134,4 +141,17 @@ void mock_eeprom_clear(void) {
 
 uint16_t mock_eeprom_size(void) {
     return MOCK_EEPROM_SIZE;
+}
+
+uint8_t mock_adc_read(uint8_t channel) {
+    if (channel < MOCK_ADC_CHANNELS) {
+        return mock_adc_values[channel];
+    }
+    return 0;
+}
+
+void mock_adc_set_value(uint8_t channel, uint8_t value) {
+    if (channel < MOCK_ADC_CHANNELS) {
+        mock_adc_values[channel] = value;
+    }
 }

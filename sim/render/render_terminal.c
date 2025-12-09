@@ -106,14 +106,29 @@ static void terminal_render(Renderer *self, const SimState *state) {
            state->signal_out ? "\033[42;30m HIGH \033[0m" : "\033[100m LOW  \033[0m");
 
     // Input states
-    printf("  Button A: %s    Button B: %s\033[K\n\n",
+    printf("  Button A: %s    Button B: %s\033[K\n",
            state->button_a ? "\033[43;30m[HELD]\033[0m" : "[ -- ]",
            state->button_b ? "\033[43;30m[HELD]\033[0m" : "[ -- ]");
 
+    // CV input display with voltage bar
+    uint16_t cv_mv = (uint16_t)(((uint32_t)state->cv_voltage * 5000) / 255);
+    int bar_width = (state->cv_voltage * 16) / 255;  // 16 char bar
+    printf("  CV Input: %s  %u.%uV [",
+           state->cv_in ? "\033[42;30m HIGH \033[0m" : "\033[100m LOW  \033[0m",
+           cv_mv / 1000, (cv_mv % 1000) / 100);
+    for (int i = 0; i < 16; i++) {
+        if (i < bar_width) {
+            printf("\033[46m \033[0m");  // Cyan bar
+        } else {
+            printf("\033[100m \033[0m");  // Dark gray
+        }
+    }
+    printf("]\033[K\n\n");
+
     // Controls
     printf("\033[2m──────────────────────────────────────────────────────\033[0m\033[K\n");
-    printf("  [A] Button A    [B] Button B    [Q] Quit\033[K\n");
-    printf("  [R] Reset time  [F] Fast/Realtime    [L] Legend\033[K\n");
+    printf("  [A] Button A    [B] Button B    [C] Toggle CV\033[K\n");
+    printf("  [+/-] CV Volts  [R] Reset       [F] Fast/Real  [Q] Quit\033[K\n");
     printf("\033[2m──────────────────────────────────────────────────────\033[0m\033[K\n\n");
 
     // Mode indicator

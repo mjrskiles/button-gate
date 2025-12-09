@@ -5,6 +5,7 @@
 #include "events/events.h"
 #include "core/states.h"
 #include "modes/mode_handlers.h"
+#include "input/cv_input.h"
 #include "app_init.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -24,7 +25,7 @@
  */
 
 // Menu timeout (auto-exit after inactivity)
-#define MENU_TIMEOUT_MS     10000   // 10 seconds
+#define MENU_TIMEOUT_MS     60000   // 60 seconds
 
 /**
  * Gatekeeper application coordinator
@@ -39,6 +40,9 @@ typedef struct {
 
     // Event processing
     EventProcessor events;  // Input event detection
+
+    // CV input processing (per ADR-004)
+    CVInput cv_input;       // Analog CV with hysteresis
 
     // Context
     uint8_t menu_entry_mode;    // Mode when menu was entered (for context restore)

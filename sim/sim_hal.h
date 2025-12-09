@@ -3,6 +3,7 @@
 
 #include "hardware/hal_interface.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @file sim_hal.h
@@ -11,6 +12,9 @@
  * Pure hardware abstraction layer for x86 simulator.
  * Display is handled separately by renderers.
  */
+
+// Number of simulated LEDs
+#define SIM_NUM_LEDS 2
 
 /**
  * Get the simulator HAL interface.
@@ -24,13 +28,29 @@ HalInterface* sim_get_hal(void);
  */
 void sim_set_button_a(bool pressed);
 void sim_set_button_b(bool pressed);
-void sim_set_cv_in(bool high);
+
+/**
+ * Set CV input voltage level (0-255, maps to 0-5V).
+ * The digital state is derived via hysteresis in cv_input module.
+ */
+void sim_set_cv_voltage(uint8_t adc_value);
+
+/**
+ * Adjust CV voltage by delta (-255 to +255).
+ * Clamps to valid range.
+ */
+void sim_adjust_cv_voltage(int16_t delta);
 
 /**
  * Input state getters.
  */
 bool sim_get_button_a(void);
 bool sim_get_button_b(void);
+
+/**
+ * Get current CV voltage level (0-255 ADC value).
+ */
+uint8_t sim_get_cv_voltage(void);
 
 /**
  * Output state getter.

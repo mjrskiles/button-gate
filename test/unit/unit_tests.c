@@ -15,6 +15,7 @@
 #include "fsm/test_fsm.h"
 #include "fsm/test_events.h"
 #include "fsm/test_mode_handlers.h"
+#include "core/test_coordinator.h"
 
 void run_all_tests(void);
 
@@ -46,6 +47,7 @@ void run_all_tests(void) {
     RunAllFSMTests();
     RunAllEventProcessorTests();
     RUN_TEST_GROUP(ModeHandlersTests);
+    RunAllCoordinatorTests();
 }
 
 /**

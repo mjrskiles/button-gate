@@ -151,8 +151,8 @@ TEST(EventProcessorTests, TestEventCVFall) {
     TEST_ASSERT_EQUAL(EVT_CV_FALL, evt);
 }
 
-TEST(EventProcessorTests, TestEventMenuEnter) {
-    // Menu Enter: A pressed first, then B held for threshold
+TEST(EventProcessorTests, TestEventMenuToggle) {
+    // Menu Toggle: A pressed first, then B held for threshold
     // Press A first
     input.button_a = true;
     input.current_time = 100;
@@ -168,16 +168,16 @@ TEST(EventProcessorTests, TestEventMenuEnter) {
     Event evt_a = event_processor_update(&ep, &input);
     TEST_ASSERT_EQUAL(EVT_A_HOLD, evt_a);
 
-    // B reaches hold threshold - this triggers menu enter
+    // B reaches hold threshold - this triggers menu toggle
     // (because A was pressed before B)
     input.current_time = 200 + EP_HOLD_THRESHOLD_MS;
     Event evt = event_processor_update(&ep, &input);
 
-    TEST_ASSERT_EQUAL(EVT_MENU_ENTER, evt);
+    TEST_ASSERT_EQUAL(EVT_MENU_TOGGLE, evt);
 }
 
-TEST(EventProcessorTests, TestEventModeChange) {
-    // Mode Change: B pressed first, then A held for threshold
+TEST(EventProcessorTests, TestEventModeNext) {
+    // Mode Next: B pressed first, then A held for threshold
     // Press B first
     input.button_b = true;
     input.current_time = 100;
@@ -193,12 +193,12 @@ TEST(EventProcessorTests, TestEventModeChange) {
     Event evt_b = event_processor_update(&ep, &input);
     TEST_ASSERT_EQUAL(EVT_B_HOLD, evt_b);
 
-    // A reaches hold threshold - this triggers mode change
+    // A reaches hold threshold - this triggers mode next
     // (because B was pressed before A)
     input.current_time = 200 + EP_HOLD_THRESHOLD_MS;
     Event evt = event_processor_update(&ep, &input);
 
-    TEST_ASSERT_EQUAL(EVT_MODE_CHANGE, evt);
+    TEST_ASSERT_EQUAL(EVT_MODE_NEXT, evt);
 }
 
 TEST(EventProcessorTests, TestNoDoubleFirePress) {
@@ -303,8 +303,8 @@ TEST_GROUP_RUNNER(EventProcessorTests) {
     RUN_TEST_CASE(EventProcessorTests, TestEventBHold);
     RUN_TEST_CASE(EventProcessorTests, TestEventCVRise);
     RUN_TEST_CASE(EventProcessorTests, TestEventCVFall);
-    RUN_TEST_CASE(EventProcessorTests, TestEventMenuEnter);
-    RUN_TEST_CASE(EventProcessorTests, TestEventModeChange);
+    RUN_TEST_CASE(EventProcessorTests, TestEventMenuToggle);
+    RUN_TEST_CASE(EventProcessorTests, TestEventModeNext);
     RUN_TEST_CASE(EventProcessorTests, TestNoDoubleFirePress);
     RUN_TEST_CASE(EventProcessorTests, TestNoDoubleFireHold);
     RUN_TEST_CASE(EventProcessorTests, TestAPressHasPriorityOverBPress);

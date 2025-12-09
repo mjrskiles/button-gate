@@ -23,10 +23,12 @@ static uint8_t sim_eeprom[SIM_EEPROM_SIZE];
 static uint32_t sim_time_ms = 0;
 
 // LED state (for neopixel simulation)
-#define SIM_NUM_LEDS 2
 static uint8_t led_r[SIM_NUM_LEDS] = {0};
 static uint8_t led_g[SIM_NUM_LEDS] = {0};
 static uint8_t led_b[SIM_NUM_LEDS] = {0};
+
+// CV input voltage (0-255 ADC value, maps to 0-5V)
+static uint8_t sim_cv_voltage = 0;
 
 // Pin assignments (match mock_hal for consistency)
 #define PIN_BUTTON_A    2
@@ -51,6 +53,7 @@ static uint8_t sim_eeprom_read_byte(uint16_t addr);
 static void sim_eeprom_write_byte(uint16_t addr, uint8_t value);
 static uint16_t sim_eeprom_read_word(uint16_t addr);
 static void sim_eeprom_write_word(uint16_t addr, uint16_t value);
+static uint8_t sim_adc_read(uint8_t channel);
 
 // Global HAL pointer (defined in hal_interface.h as extern)
 HalInterface *p_hal = NULL;
@@ -78,6 +81,7 @@ static HalInterface sim_hal = {
     .eeprom_write_byte  = sim_eeprom_write_byte,
     .eeprom_read_word   = sim_eeprom_read_word,
     .eeprom_write_word  = sim_eeprom_write_word,
+    .adc_read           = sim_adc_read,
 };
 
 // =============================================================================
@@ -151,6 +155,15 @@ static void sim_eeprom_write_word(uint16_t addr, uint16_t value) {
     sim_eeprom[addr + 1] = (value >> 8) & 0xFF;
 }
 
+static uint8_t sim_adc_read(uint8_t channel) {
+    // In simulator, channel 3 (CV input) returns the simulated CV voltage
+    // Other channels return 0
+    if (channel == 3) {
+        return sim_cv_voltage;
+    }
+    return 0;
+}
+
 // =============================================================================
 // Public API
 // =============================================================================
@@ -167,8 +180,15 @@ void sim_set_button_b(bool pressed) {
     pin_states[PIN_BUTTON_B] = pressed;
 }
 
-void sim_set_cv_in(bool high) {
-    (void)high;  // CV input not yet implemented in sim
+void sim_set_cv_voltage(uint8_t adc_value) {
+    sim_cv_voltage = adc_value;
+}
+
+void sim_adjust_cv_voltage(int16_t delta) {
+    int16_t new_value = (int16_t)sim_cv_voltage + delta;
+    if (new_value < 0) new_value = 0;
+    if (new_value > 255) new_value = 255;
+    sim_cv_voltage = (uint8_t)new_value;
 }
 
 bool sim_get_button_a(void) {
@@ -177,6 +197,10 @@ bool sim_get_button_a(void) {
 
 bool sim_get_button_b(void) {
     return pin_states[PIN_BUTTON_B];
+}
+
+uint8_t sim_get_cv_voltage(void) {
+    return sim_cv_voltage;
 }
 
 bool sim_get_output(void) {

@@ -44,9 +44,8 @@ typedef enum {
     EVT_B_HOLD,             // Button B held past threshold
 
     // === Compound gesture events (order-sensitive) ===
-    EVT_MENU_ENTER,         // A:hold -> B:hold (A first, then B reaches threshold)
-    EVT_MENU_EXIT,          // A:release while in menu -> exit menu
-    EVT_MODE_CHANGE,        // B:hold -> A:hold (B first, then A reaches threshold)
+    EVT_MENU_TOGGLE,        // A:hold + B:hold (A first, then B reaches threshold)
+    EVT_MODE_NEXT,          // B:hold + A:hold (B first, then A reaches threshold)
 
     // === Timing events ===
     EVT_TIMEOUT,            // Generic timeout (context-dependent)

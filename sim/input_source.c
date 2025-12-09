@@ -302,8 +302,8 @@ static bool script_update(InputSource *self, uint32_t current_time_ms) {
                         script_log(sim_get_time(), "Script: Button B pressed");
                         break;
                     case TGT_CV:
-                        sim_set_cv_in(true);
-                        script_log(sim_get_time(), "Script: CV high");
+                        sim_set_cv_voltage(255);  // 5V = HIGH
+                        script_log(sim_get_time(), "Script: CV high (5V)");
                         break;
                     default:
                         break;
@@ -321,8 +321,8 @@ static bool script_update(InputSource *self, uint32_t current_time_ms) {
                         script_log(sim_get_time(), "Script: Button B released");
                         break;
                     case TGT_CV:
-                        sim_set_cv_in(false);
-                        script_log(sim_get_time(), "Script: CV low");
+                        sim_set_cv_voltage(0);  // 0V = LOW
+                        script_log(sim_get_time(), "Script: CV low (0V)");
                         break;
                     default:
                         break;

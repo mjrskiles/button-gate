@@ -69,13 +69,15 @@ void sim_state_set_fsm(SimState *state, TopState top, ModeState mode, MenuPage p
     }
 }
 
-void sim_state_set_inputs(SimState *state, bool btn_a, bool btn_b, bool cv) {
+void sim_state_set_inputs(SimState *state, bool btn_a, bool btn_b, bool cv_digital, uint8_t cv_voltage) {
     if (!state) return;
 
-    if (state->button_a != btn_a || state->button_b != btn_b || state->cv_in != cv) {
+    if (state->button_a != btn_a || state->button_b != btn_b ||
+        state->cv_in != cv_digital || state->cv_voltage != cv_voltage) {
         state->button_a = btn_a;
         state->button_b = btn_b;
-        state->cv_in = cv;
+        state->cv_in = cv_digital;
+        state->cv_voltage = cv_voltage;
         state->dirty = true;
     }
 }

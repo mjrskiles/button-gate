@@ -1,0 +1,86 @@
+# Test mode change gesture behavior
+# Verifies that:
+# 1. Mode change gesture (B hold + A hold) changes mode
+# 2. Button release does NOT cause issues
+# 3. New mode (trigger) has different behavior than gate mode
+
+# Wait for app init (starts in gate mode)
+1000    log     Starting mode change test
+
+# === Verify starting in gate mode ===
+0       log     Verifying gate mode behavior
+0       press   a
+20      assert  output high
+50      release a
+20      assert  output low
+50      log     Gate mode confirmed
+
+# === Test 1: Change mode with B+A hold gesture ===
+100     log     Test 1: Changing mode with B hold + A hold gesture
+
+# Press B first (this is key - B must be first for mode change)
+0       press   b
+100     press   a
+# Wait for A to reach hold threshold (B was pressed first)
+550     log     Mode change gesture complete - should now be in TRIGGER mode
+
+# Release buttons
+50      release a
+50      release b
+100     log     Buttons released
+
+# === Test 2: Verify trigger mode behavior ===
+# Trigger mode: rising edge generates fixed pulse, output returns low after pulse
+100     log     Test 2: Verifying trigger mode behavior
+
+# Press A - should start a pulse
+0       press   a
+10      assert  output high     # Pulse started
+
+# Release A - pulse should still be active (10ms default pulse)
+20      release a
+
+# Wait for pulse to expire (default pulse is 10ms)
+50      assert  output low      # Pulse should have ended
+
+# Press A again - new pulse
+50      press   a
+10      assert  output high
+20      release a
+50      assert  output low
+
+# === Test 3: Change mode again (to toggle mode) ===
+100     log     Test 3: Changing to toggle mode
+
+0       press   b
+100     press   a
+550     log     Should now be in TOGGLE mode
+50      release a
+50      release b
+
+# === Test 4: Verify toggle mode behavior ===
+# Note: Toggle mode toggles on rising edge. During the mode change gesture,
+# A was pressed which caused a toggle. So output starts HIGH in toggle mode.
+100     log     Test 4: Verifying toggle mode behavior
+
+# Output should be HIGH from the toggle during mode change
+0       assert  output high     # Already toggled ON from mode change gesture
+
+# First press - toggle off
+0       press   a
+50      release a
+20      assert  output low      # Toggled off
+
+# Second press - toggle on
+100     press   a
+50      release a
+20      assert  output high     # Toggled on
+
+# Third press - toggle off again
+100     press   a
+50      release a
+20      assert  output low
+
+# Done
+100     log     Mode change test complete
+0       quit
