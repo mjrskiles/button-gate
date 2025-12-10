@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A digital gate/trigger processor for Eurorack modular synthesizers. Press a button (or send a CV signal), get a configurable output: hold it, pulse it, or toggle it.
+A digital gate/trigger processor for Eurorack modular synthesizers. Gatekeeper has a configurable two-state output driven by a push button or CV input.
 
 This project is designed as a reference for those learning synth/modular DIY and embedded development on AVR microcontrollers.
 
