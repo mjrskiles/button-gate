@@ -30,7 +30,7 @@ This project is designed as a reference for those learning synth/modular DIY and
   Clean interface for hardware access, enabling comprehensive unit testing on the host machine.
 
 - **Unit Testing:**
-  171 tests using the Unity framework verify functionality without hardware.
+  144 tests using the Unity framework verify functionality without hardware.
 
 - **x86 Simulator:**
   Interactive terminal UI or headless JSON output for testing without hardware.
@@ -41,8 +41,8 @@ This project is designed as a reference for those learning synth/modular DIY and
 
 | Resource | Size | Usage |
 |----------|------|-------|
-| Flash | 8 KB | ~65% used |
-| SRAM | 512 B | ~22% used |
+| Flash | 8 KB | ~68% used |
+| SRAM | 512 B | ~24% used |
 | EEPROM | 512 B | Settings persistence |
 
 **Pin Assignment:**

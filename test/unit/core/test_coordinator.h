@@ -331,6 +331,119 @@ TEST(CoordinatorTests, TestModeGestureDoesNotEnterMenu) {
 }
 
 // =============================================================================
+// Menu Value Cycling Tests
+// =============================================================================
+
+TEST(CoordinatorTests, TestMenuValueCyclesTriggerPulse) {
+    // Enter menu and go to trigger pulse page
+    coordinator_set_mode(&coord, MODE_TRIGGER);
+    do_menu_toggle_gesture();
+    release_button_a();
+    release_button_b();
+    run_for_ms(100);
+    TEST_ASSERT_EQUAL(TOP_MENU, coordinator_get_top_state(&coord));
+
+    // Navigate to trigger pulse page (A tap advances page)
+    press_button_a();
+    run_for_ms(50);
+    release_button_a();
+    run_for_ms(50);
+    TEST_ASSERT_EQUAL(PAGE_TRIGGER_PULSE_LEN, coordinator_get_page(&coord));
+
+    // Initial value is default (index 2 = 50ms)
+    TEST_ASSERT_EQUAL(2, settings.trigger_pulse_idx);
+
+    // B tap cycles value
+    press_button_b();
+    run_for_ms(50);
+    release_button_b();
+    run_for_ms(50);
+
+    // Value should have cycled (2 -> 3)
+    TEST_ASSERT_EQUAL(3, settings.trigger_pulse_idx);
+}
+
+TEST(CoordinatorTests, TestMenuValueWrapsAround) {
+    // Enter menu at divide page
+    coordinator_set_mode(&coord, MODE_DIVIDE);
+    do_menu_toggle_gesture();
+    release_button_a();
+    release_button_b();
+    run_for_ms(100);
+    TEST_ASSERT_EQUAL(PAGE_DIVIDE_DIVISOR, coordinator_get_page(&coord));
+
+    // Initial value is 0 (/2)
+    TEST_ASSERT_EQUAL(0, settings.divide_divisor_idx);
+
+    // Cycle through all 4 values (0->1->2->3->0)
+    for (int i = 0; i < 4; i++) {
+        press_button_b();
+        run_for_ms(50);
+        release_button_b();
+        run_for_ms(50);
+    }
+
+    // Should wrap back to 0
+    TEST_ASSERT_EQUAL(0, settings.divide_divisor_idx);
+}
+
+// =============================================================================
+// A Button Manual Trigger Tests
+// =============================================================================
+
+TEST(CoordinatorTests, TestGateAButtonDisabledByDefault) {
+    TEST_ASSERT_EQUAL(MODE_GATE, coordinator_get_mode(&coord));
+    TEST_ASSERT_EQUAL(0, settings.gate_a_mode);  // Disabled by default
+
+    // Press only A
+    press_button_a();
+    run_for_ms(50);
+
+    // Output should still be false (A is disabled)
+    TEST_ASSERT_FALSE(coordinator_get_output(&coord));
+
+    release_button_a();
+}
+
+TEST(CoordinatorTests, TestGateAButtonEnabledTriggersOutput) {
+    TEST_ASSERT_EQUAL(MODE_GATE, coordinator_get_mode(&coord));
+
+    // Enable A button mode
+    settings.gate_a_mode = 1;  // GATE_A_MODE_MANUAL
+
+    // Press only A
+    press_button_a();
+    run_for_ms(50);
+
+    // Output should be true (A triggers in gate mode)
+    TEST_ASSERT_TRUE(coordinator_get_output(&coord));
+
+    release_button_a();
+    run_for_ms(50);
+
+    // Output should be false again
+    TEST_ASSERT_FALSE(coordinator_get_output(&coord));
+}
+
+TEST(CoordinatorTests, TestGateAButtonOnlyWorksInGateMode) {
+    // Enable A button mode
+    settings.gate_a_mode = 1;
+
+    // Switch to Trigger mode
+    coordinator_set_mode(&coord, MODE_TRIGGER);
+    TEST_ASSERT_EQUAL(MODE_TRIGGER, coordinator_get_mode(&coord));
+
+    // Press only A (should NOT trigger in Trigger mode)
+    press_button_a();
+    run_for_ms(50);
+
+    // Output should be false (A only works in Gate mode)
+    TEST_ASSERT_FALSE(coordinator_get_output(&coord));
+
+    release_button_a();
+}
+
+// =============================================================================
 // Test Runner
 // =============================================================================
 
@@ -354,6 +467,15 @@ TEST_GROUP_RUNNER(CoordinatorTests) {
     // Non-interference tests
     RUN_TEST_CASE(CoordinatorTests, TestMenuGestureDoesNotTriggerModeChange);
     RUN_TEST_CASE(CoordinatorTests, TestModeGestureDoesNotEnterMenu);
+
+    // Menu value cycling tests
+    RUN_TEST_CASE(CoordinatorTests, TestMenuValueCyclesTriggerPulse);
+    RUN_TEST_CASE(CoordinatorTests, TestMenuValueWrapsAround);
+
+    // A button manual trigger tests
+    RUN_TEST_CASE(CoordinatorTests, TestGateAButtonDisabledByDefault);
+    RUN_TEST_CASE(CoordinatorTests, TestGateAButtonEnabledTriggersOutput);
+    RUN_TEST_CASE(CoordinatorTests, TestGateAButtonOnlyWorksInGateMode);
 }
 
 void RunAllCoordinatorTests(void) {

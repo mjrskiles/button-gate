@@ -1,5 +1,6 @@
 #include "input_source.h"
 #include "sim_hal.h"
+#include "cv_source.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,17 +25,193 @@ static void script_log(uint32_t time_ms, const char *fmt, ...) {
 // Keyboard Input Source
 // =============================================================================
 
+// CV voltage step size for +/- keys (in ADC units, ~0.2V per step)
+#define CV_VOLTAGE_STEP 10
+
+// External: Get CV source from sim_main.c
+extern CVSource* sim_get_cv_source(void);
+
+// LFO preset states for cycling
+typedef enum {
+    LFO_PRESET_OFF,
+    LFO_PRESET_1HZ_SINE,
+    LFO_PRESET_2HZ_TRI,
+    LFO_PRESET_4HZ_SQUARE,
+    LFO_PRESET_COUNT
+} LFOPreset;
+
+static LFOPreset current_lfo_preset = LFO_PRESET_OFF;
+
+// Cycle to next LFO preset
+static void cycle_lfo_preset(void) {
+    CVSource *cv = sim_get_cv_source();
+    if (!cv) return;
+
+    current_lfo_preset = (current_lfo_preset + 1) % LFO_PRESET_COUNT;
+
+    switch (current_lfo_preset) {
+        case LFO_PRESET_OFF:
+            cv_source_set_manual(cv, 0);
+            break;
+        case LFO_PRESET_1HZ_SINE:
+            cv_source_set_lfo(cv, 1.0f, LFO_SINE, 0, 255);
+            break;
+        case LFO_PRESET_2HZ_TRI:
+            cv_source_set_lfo(cv, 2.0f, LFO_TRI, 0, 255);
+            break;
+        case LFO_PRESET_4HZ_SQUARE:
+            cv_source_set_lfo(cv, 4.0f, LFO_SQUARE, 0, 255);
+            break;
+        default:
+            break;
+    }
+}
+
+// Auto-release duration for tap keys (milliseconds)
+#define TAP_AUTO_RELEASE_MS 200
+
+// Auto-release timer state
+typedef struct {
+    uint32_t release_time;  // 0 = inactive, else time to release
+} AutoRelease;
+
 typedef struct {
     struct termios orig_termios;
     bool terminal_raw;
     bool realtime;
+    AutoRelease auto_release_a;
+    AutoRelease auto_release_b;
+    SimState *sim_state;  // For UI controls (F/L keys), may be NULL
 } KeyboardCtx;
 
+static int kb_kbhit(void) {
+    struct timeval tv = {0, 0};
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+}
+
+static int kb_getch(void) {
+    unsigned char ch;
+    if (read(STDIN_FILENO, &ch, 1) == 1) return ch;
+    return -1;
+}
+
+// Process auto-release timers
+static void keyboard_process_auto_release(KeyboardCtx *ctx, uint32_t current_time) {
+    if (ctx->auto_release_a.release_time &&
+        current_time >= ctx->auto_release_a.release_time) {
+        sim_set_button_a(false);
+        ctx->auto_release_a.release_time = 0;
+    }
+    if (ctx->auto_release_b.release_time &&
+        current_time >= ctx->auto_release_b.release_time) {
+        sim_set_button_b(false);
+        ctx->auto_release_b.release_time = 0;
+    }
+}
+
 static bool keyboard_update(InputSource *self, uint32_t current_time_ms) {
-    (void)current_time_ms;
-    (void)self;
-    // Keyboard input is now handled directly in sim_main.c for terminal mode.
-    // This function is a no-op but keeps the interface consistent.
+    KeyboardCtx *ctx = (KeyboardCtx*)self->ctx;
+
+    // Process auto-release timers
+    keyboard_process_auto_release(ctx, current_time_ms);
+
+    // Process keyboard input
+    while (kb_kbhit()) {
+        int ch = kb_getch();
+        switch (ch) {
+            case 'a':
+                // Lowercase: tap (press + auto-release)
+                if (sim_get_button_a()) {
+                    // Already held - release it
+                    sim_set_button_a(false);
+                    ctx->auto_release_a.release_time = 0;
+                } else {
+                    // Press with auto-release
+                    sim_set_button_a(true);
+                    ctx->auto_release_a.release_time = current_time_ms + TAP_AUTO_RELEASE_MS;
+                }
+                break;
+
+            case 'A':
+                // Uppercase: hold (no auto-release)
+                if (!sim_get_button_a()) {
+                    sim_set_button_a(true);
+                    ctx->auto_release_a.release_time = 0;  // Cancel any pending auto-release
+                }
+                break;
+
+            case 'b':
+                // Lowercase: tap (press + auto-release)
+                if (sim_get_button_b()) {
+                    // Already held - release it
+                    sim_set_button_b(false);
+                    ctx->auto_release_b.release_time = 0;
+                } else {
+                    // Press with auto-release
+                    sim_set_button_b(true);
+                    ctx->auto_release_b.release_time = current_time_ms + TAP_AUTO_RELEASE_MS;
+                }
+                break;
+
+            case 'B':
+                // Uppercase: hold (no auto-release)
+                if (!sim_get_button_b()) {
+                    sim_set_button_b(true);
+                    ctx->auto_release_b.release_time = 0;  // Cancel any pending auto-release
+                }
+                break;
+
+            case 'c': case 'C': {
+                // Toggle CV between 0V and 5V
+                uint8_t current = sim_get_cv_voltage();
+                uint8_t new_voltage = (current < 128) ? 255 : 0;
+                sim_set_cv_voltage(new_voltage);
+                break;
+            }
+
+            case '+': case '=':
+                // Increase CV voltage
+                sim_adjust_cv_voltage(CV_VOLTAGE_STEP);
+                break;
+
+            case '-': case '_':
+                // Decrease CV voltage
+                sim_adjust_cv_voltage(-CV_VOLTAGE_STEP);
+                break;
+
+            case 'r': case 'R':
+                sim_reset_time();
+                ctx->auto_release_a.release_time = 0;
+                ctx->auto_release_b.release_time = 0;
+                break;
+
+            case 'f': case 'F':
+                // Toggle fast/realtime mode
+                if (ctx->sim_state) {
+                    ctx->sim_state->realtime_mode = !ctx->sim_state->realtime_mode;
+                    sim_state_mark_dirty(ctx->sim_state);
+                }
+                break;
+
+            case 'l':
+                // Cycle LFO preset
+                cycle_lfo_preset();
+                break;
+
+            case 'L':
+                // Toggle legend visibility
+                if (ctx->sim_state) {
+                    sim_state_toggle_legend(ctx->sim_state);
+                }
+                break;
+
+            case 'q': case 'Q': case 27:  // ESC
+                return false;  // Signal quit
+        }
+    }
     return true;
 }
 
@@ -57,7 +234,7 @@ static void keyboard_cleanup(InputSource *self) {
     free(self);
 }
 
-InputSource* input_source_keyboard_create(void) {
+InputSource* input_source_keyboard_create(SimState *sim_state) {
     InputSource *src = malloc(sizeof(InputSource));
     KeyboardCtx *ctx = malloc(sizeof(KeyboardCtx));
     if (!src || !ctx) {
@@ -75,6 +252,13 @@ InputSource* input_source_keyboard_create(void) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
     ctx->terminal_raw = true;
     ctx->realtime = true;
+
+    // Initialize auto-release timers
+    ctx->auto_release_a.release_time = 0;
+    ctx->auto_release_b.release_time = 0;
+
+    // Store sim_state for UI controls
+    ctx->sim_state = sim_state;
 
     src->update = keyboard_update;
     src->is_realtime = keyboard_is_realtime;

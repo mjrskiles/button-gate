@@ -2,6 +2,7 @@
 #include "modes/mode_handlers.h"
 #include "hardware/hal_interface.h"
 #include "input/cv_input.h"
+#include "config/mode_config.h"
 #include "utility/progmem.h"
 #include <stddef.h>
 
@@ -121,8 +122,8 @@ static void action_next_mode(void) {
     uint8_t next = (current + 1) % MODE_COUNT;
     fsm_set_state(&g_coord->mode_fsm, next);
 
-    // Initialize context for new mode
-    mode_handler_init(next, &g_coord->mode_ctx);
+    // Initialize context for new mode with current settings
+    mode_handler_init(next, &g_coord->mode_ctx, g_coord->settings);
 
     // Update activity timestamp
     g_coord->last_activity = p_hal->millis();
@@ -140,10 +141,62 @@ static void action_next_page(void) {
 }
 
 static void action_cycle_value(void) {
-    if (!g_coord) return;
+    if (!g_coord || !g_coord->settings) return;
 
-    // Value cycling is handled per-page in menu FSM
-    // This action just updates activity timestamp for menu timeout
+    MenuPage page = (MenuPage)fsm_get_state(&g_coord->menu_fsm);
+    ModeState current_mode = (ModeState)fsm_get_state(&g_coord->mode_fsm);
+    bool reinit_needed = false;
+
+    switch (page) {
+        case PAGE_GATE_CV:
+            g_coord->settings->gate_a_mode =
+                (g_coord->settings->gate_a_mode + 1) % GATE_A_MODE_COUNT;
+            if (current_mode == MODE_GATE) reinit_needed = true;
+            break;
+
+        case PAGE_TRIGGER_BEHAVIOR:
+            g_coord->settings->trigger_edge =
+                (g_coord->settings->trigger_edge + 1) % TRIGGER_EDGE_COUNT;
+            if (current_mode == MODE_TRIGGER) reinit_needed = true;
+            break;
+
+        case PAGE_TRIGGER_PULSE_LEN:
+            g_coord->settings->trigger_pulse_idx =
+                (g_coord->settings->trigger_pulse_idx + 1) % TRIGGER_PULSE_COUNT;
+            if (current_mode == MODE_TRIGGER) reinit_needed = true;
+            break;
+
+        case PAGE_TOGGLE_BEHAVIOR:
+            g_coord->settings->toggle_edge =
+                (g_coord->settings->toggle_edge + 1) % TOGGLE_EDGE_COUNT;
+            if (current_mode == MODE_TOGGLE) reinit_needed = true;
+            break;
+
+        case PAGE_DIVIDE_DIVISOR:
+            g_coord->settings->divide_divisor_idx =
+                (g_coord->settings->divide_divisor_idx + 1) % DIVIDE_DIVISOR_COUNT;
+            if (current_mode == MODE_DIVIDE) reinit_needed = true;
+            break;
+
+        case PAGE_CYCLE_PATTERN:
+            g_coord->settings->cycle_tempo_idx =
+                (g_coord->settings->cycle_tempo_idx + 1) % CYCLE_TEMPO_COUNT;
+            if (current_mode == MODE_CYCLE) reinit_needed = true;
+            break;
+
+        case PAGE_CV_GLOBAL:
+        case PAGE_MENU_TIMEOUT:
+        default:
+            // Not implemented yet - no cycling action
+            break;
+    }
+
+    // Reinitialize mode handler if current mode's setting changed
+    if (reinit_needed) {
+        mode_handler_init(current_mode, &g_coord->mode_ctx, g_coord->settings);
+    }
+
+    // Update activity timestamp for menu timeout
     g_coord->last_activity = p_hal->millis();
 }
 
@@ -167,7 +220,7 @@ void coordinator_init(Coordinator *coord, AppSettings *settings) {
     cv_input_init(&coord->cv_input);
 
     // Initialize mode handler context (default to gate mode)
-    mode_handler_init(MODE_GATE, &coord->mode_ctx);
+    mode_handler_init(MODE_GATE, &coord->mode_ctx, settings);
 
     // Initialize top-level FSM
     fsm_init(&coord->top_fsm,
@@ -258,6 +311,12 @@ void coordinator_update(Coordinator *coord) {
         ModeState mode = (ModeState)fsm_get_state(&coord->mode_fsm);
         bool input_state = event_processor_b_pressed(&coord->events);
 
+        // In Gate mode with gate_a_mode enabled, button A also triggers
+        if (mode == MODE_GATE && coord->settings &&
+            coord->settings->gate_a_mode == GATE_A_MODE_MANUAL) {
+            input_state = input_state || event_processor_a_pressed(&coord->events);
+        }
+
         mode_handler_process(mode, &coord->mode_ctx, input_state, &coord->output_state);
     }
 
@@ -279,7 +338,7 @@ void coordinator_set_mode(Coordinator *coord, ModeState mode) {
     if (!coord) return;
     if (mode >= MODE_COUNT) return;
     fsm_set_state(&coord->mode_fsm, mode);
-    mode_handler_init(mode, &coord->mode_ctx);
+    mode_handler_init(mode, &coord->mode_ctx, coord->settings);
 }
 
 bool coordinator_in_menu(const Coordinator *coord) {
@@ -302,4 +361,50 @@ void coordinator_get_led_feedback(const Coordinator *coord, LEDFeedback *feedbac
 
     ModeState mode = (ModeState)fsm_get_state(&coord->mode_fsm);
     mode_handler_get_led(mode, &coord->mode_ctx, feedback);
+
+    // Add application state for LED controller transitions
+    feedback->current_mode = mode;
+    feedback->current_page = (uint8_t)fsm_get_state(&coord->menu_fsm);
+    feedback->in_menu = (fsm_get_state(&coord->top_fsm) == TOP_MENU);
+
+    // Add menu value feedback
+    feedback->setting_value = 0;
+    feedback->setting_max = 1;
+
+    if (coord->settings) {
+        MenuPage page = (MenuPage)feedback->current_page;
+        switch (page) {
+            case PAGE_GATE_CV:
+                feedback->setting_value = coord->settings->gate_a_mode;
+                feedback->setting_max = GATE_A_MODE_COUNT;
+                break;
+            case PAGE_TRIGGER_BEHAVIOR:
+                feedback->setting_value = coord->settings->trigger_edge;
+                feedback->setting_max = TRIGGER_EDGE_COUNT;
+                break;
+            case PAGE_TRIGGER_PULSE_LEN:
+                feedback->setting_value = coord->settings->trigger_pulse_idx;
+                feedback->setting_max = TRIGGER_PULSE_COUNT;
+                break;
+            case PAGE_TOGGLE_BEHAVIOR:
+                feedback->setting_value = coord->settings->toggle_edge;
+                feedback->setting_max = TOGGLE_EDGE_COUNT;
+                break;
+            case PAGE_DIVIDE_DIVISOR:
+                feedback->setting_value = coord->settings->divide_divisor_idx;
+                feedback->setting_max = DIVIDE_DIVISOR_COUNT;
+                break;
+            case PAGE_CYCLE_PATTERN:
+                feedback->setting_value = coord->settings->cycle_tempo_idx;
+                feedback->setting_max = CYCLE_TEMPO_COUNT;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+bool coordinator_get_cv_state(const Coordinator *coord) {
+    if (!coord) return false;
+    return cv_input_get_state(&coord->cv_input);
 }

@@ -1,4 +1,5 @@
 #include "app_init.h"
+#include "config/mode_config.h"
 #include "utility/delay.h"
 
 // Size of AppSettings struct for iteration
@@ -18,43 +19,39 @@ static uint8_t calculate_checksum(const AppSettings *settings) {
 
 /**
  * Provide visual feedback that factory reset is pending.
- * Toggles LEDs while waiting for buttons to be held.
+ * Blinks output LED while waiting for buttons to be held.
  */
 static void reset_feedback_tick(void) {
-    p_hal->toggle_pin(p_hal->led_mode_top_pin);
-    p_hal->toggle_pin(p_hal->led_mode_bottom_pin);
+    p_hal->toggle_pin(p_hal->sig_out_pin);
 }
 
 /**
  * Provide visual feedback that factory reset completed.
+ * Uses sig_out_pin which drives output LED via buffer circuit.
  */
 static void reset_complete_feedback(void) {
-    // All LEDs solid for confirmation
-    p_hal->set_pin(p_hal->led_mode_top_pin);
-    p_hal->set_pin(p_hal->led_mode_bottom_pin);
-    p_hal->set_pin(p_hal->led_output_indicator_pin);
+    // Output LED solid for confirmation
+    p_hal->set_pin(p_hal->sig_out_pin);
     util_delay_ms(500);
-    p_hal->clear_pin(p_hal->led_mode_top_pin);
-    p_hal->clear_pin(p_hal->led_mode_bottom_pin);
-    p_hal->clear_pin(p_hal->led_output_indicator_pin);
+    p_hal->clear_pin(p_hal->sig_out_pin);
 }
 
 /**
  * Provide visual feedback that defaults are being used.
- * Double-blink pattern on output LED.
+ * Double-blink pattern on output LED (driven via sig_out_pin buffer).
  */
 static void defaults_feedback(void) {
     for (uint8_t i = 0; i < DEFAULTS_BLINK_COUNT; i++) {
-        p_hal->set_pin(p_hal->led_output_indicator_pin);
+        p_hal->set_pin(p_hal->sig_out_pin);
         util_delay_ms(100);
-        p_hal->clear_pin(p_hal->led_output_indicator_pin);
+        p_hal->clear_pin(p_hal->sig_out_pin);
         util_delay_ms(100);
     }
     util_delay_ms(200);
     for (uint8_t i = 0; i < DEFAULTS_BLINK_COUNT; i++) {
-        p_hal->set_pin(p_hal->led_output_indicator_pin);
+        p_hal->set_pin(p_hal->sig_out_pin);
         util_delay_ms(100);
-        p_hal->clear_pin(p_hal->led_output_indicator_pin);
+        p_hal->clear_pin(p_hal->sig_out_pin);
         util_delay_ms(100);
     }
 }
@@ -63,13 +60,13 @@ void app_init_get_defaults(AppSettings *settings) {
     if (!settings) return;
 
     settings->mode = MODE_GATE;
-    settings->cv_function = 0;  // Default CV function
-    settings->param1 = 0;
-    settings->param2 = 0;
-    // Clear reserved bytes
-    for (uint8_t i = 0; i < 4; i++) {
-        settings->reserved[i] = 0;
-    }
+    settings->trigger_pulse_idx = 2;    // Default: 50ms pulse
+    settings->trigger_edge = 0;         // Default: rising edge
+    settings->divide_divisor_idx = 0;   // Default: /2
+    settings->cycle_tempo_idx = 2;      // Default: 100 BPM (600ms period)
+    settings->toggle_edge = 0;          // Default: rising edge
+    settings->gate_a_mode = 0;          // Default: A button disabled
+    settings->reserved = 0;
 }
 
 bool app_init_check_factory_reset(void) {
@@ -107,9 +104,8 @@ bool app_init_check_factory_reset(void) {
         // If either button released, abort
         if (!p_hal->read_pin(p_hal->button_a_pin) ||
             !p_hal->read_pin(p_hal->button_b_pin)) {
-            // Turn off LEDs and return
-            p_hal->clear_pin(p_hal->led_mode_top_pin);
-            p_hal->clear_pin(p_hal->led_mode_bottom_pin);
+            // Turn off output LED and return
+            p_hal->clear_pin(p_hal->sig_out_pin);
             return false;
         }
 
@@ -180,8 +176,26 @@ static bool load_settings(AppSettings *settings) {
         return false;
     }
 
-    // Level 4: Range validation
-    if (settings->mode > MODE_TOGGLE) {
+    // Level 4: Range validation using defines from mode_config.h
+    if (settings->mode >= MODE_COUNT) {
+        return false;
+    }
+    if (settings->trigger_pulse_idx >= TRIGGER_PULSE_COUNT) {
+        return false;
+    }
+    if (settings->trigger_edge >= TRIGGER_EDGE_COUNT) {
+        return false;
+    }
+    if (settings->divide_divisor_idx >= DIVIDE_DIVISOR_COUNT) {
+        return false;
+    }
+    if (settings->cycle_tempo_idx >= CYCLE_TEMPO_COUNT) {
+        return false;
+    }
+    if (settings->toggle_edge >= TOGGLE_EDGE_COUNT) {
+        return false;
+    }
+    if (settings->gate_a_mode >= GATE_A_MODE_COUNT) {
         return false;
     }
 
@@ -202,12 +216,12 @@ AppInitResult app_init_run(AppSettings *settings) {
         // but next boot will also use defaults (which is correct behavior).
         uint16_t verify_magic = p_hal->eeprom_read_word(EEPROM_MAGIC_ADDR);
         if (verify_magic != EEPROM_MAGIC_VALUE) {
-            // EEPROM write failed - signal error with rapid blink
+            // EEPROM write failed - signal error with rapid blink on output LED
             for (uint8_t i = 0; i < 10; i++) {
-                p_hal->toggle_pin(p_hal->led_output_indicator_pin);
+                p_hal->toggle_pin(p_hal->sig_out_pin);
                 util_delay_ms(50);
             }
-            p_hal->clear_pin(p_hal->led_output_indicator_pin);
+            p_hal->clear_pin(p_hal->sig_out_pin);
         }
 
         return APP_INIT_OK_FACTORY_RESET;

@@ -31,12 +31,10 @@ static uint8_t led_b[SIM_NUM_LEDS] = {0};
 static uint8_t sim_cv_voltage = 0;
 
 // Pin assignments (match mock_hal for consistency)
+// Note: Neopixels are controlled via sim_neopixel.c, not GPIO
 #define PIN_BUTTON_A    2
 #define PIN_BUTTON_B    4
-#define PIN_SIG_OUT     1
-#define PIN_LED_TOP     5
-#define PIN_LED_OUT     6
-#define PIN_LED_BOT     7
+#define PIN_SIG_OUT     1   // Also drives output LED via buffer circuit
 
 // Forward declarations
 static void sim_hal_init(void);
@@ -48,7 +46,7 @@ static void sim_init_timer(void);
 static uint32_t sim_millis(void);
 static void sim_delay_ms(uint32_t ms);
 static void sim_advance_time(uint32_t ms);
-static void sim_reset_time(void);
+void sim_reset_time(void);  // Public - used by input_source
 static uint8_t sim_eeprom_read_byte(uint16_t addr);
 static void sim_eeprom_write_byte(uint16_t addr, uint8_t value);
 static uint16_t sim_eeprom_read_word(uint16_t addr);
@@ -67,9 +65,6 @@ static HalInterface sim_hal = {
     .button_a_pin       = PIN_BUTTON_A,
     .button_b_pin       = PIN_BUTTON_B,
     .sig_out_pin        = PIN_SIG_OUT,
-    .led_mode_top_pin   = PIN_LED_TOP,
-    .led_output_indicator_pin = PIN_LED_OUT,
-    .led_mode_bottom_pin = PIN_LED_BOT,
     .init               = sim_hal_init,
     .set_pin            = sim_set_pin,
     .clear_pin          = sim_clear_pin,
@@ -136,7 +131,7 @@ static void sim_advance_time(uint32_t ms) {
     sim_time_ms += ms;
 }
 
-static void sim_reset_time(void) {
+void sim_reset_time(void) {
     sim_time_ms = 0;
 }
 

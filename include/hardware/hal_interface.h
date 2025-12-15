@@ -31,10 +31,7 @@ typedef struct HalInterface {
     // Pin assignments (directly readable for init without function call overhead)
     uint8_t  button_a_pin;              // Primary button (menu/mode)
     uint8_t  button_b_pin;              // Secondary button (value/action)
-    uint8_t  sig_out_pin;               // CV output
-    uint8_t  led_mode_top_pin;          // Mode indicator LED (top)
-    uint8_t  led_output_indicator_pin;  // Output activity LED
-    uint8_t  led_mode_bottom_pin;       // Mode indicator LED (bottom)
+    uint8_t  sig_out_pin;               // CV output (also drives output LED via buffer)
 
     // IO functions
     void     (*init)(void);

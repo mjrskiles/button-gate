@@ -1,6 +1,9 @@
 #include "modes/mode_handlers.h"
 #include "core/states.h"
 #include "hardware/hal_interface.h"
+#include "app_init.h"
+#include "config/mode_config.h"
+#include "utility/progmem.h"
 
 /**
  * @file mode_handlers.c
@@ -46,11 +49,17 @@ static void gate_get_led(const GateContext *ctx, LEDFeedback *fb) {
 // Trigger Mode
 // =============================================================================
 
-static void trigger_init(TriggerContext *ctx) {
+static void trigger_init(TriggerContext *ctx, const AppSettings *settings) {
     ctx->output_state = false;
     ctx->last_input = false;
     ctx->pulse_start = 0;
-    ctx->pulse_duration_ms = TRIGGER_PULSE_DEFAULT;
+
+    // Get pulse duration from settings
+    if (settings && settings->trigger_pulse_idx < TRIGGER_PULSE_COUNT) {
+        ctx->pulse_duration_ms = PROGMEM_READ_WORD(&TRIGGER_PULSE_VALUES[settings->trigger_pulse_idx]);
+    } else {
+        ctx->pulse_duration_ms = TRIGGER_PULSE_DEFAULT;
+    }
 }
 
 static bool trigger_process(TriggerContext *ctx, bool input, bool *output) {
@@ -130,12 +139,18 @@ static void toggle_get_led(const ToggleContext *ctx, LEDFeedback *fb) {
 // Divide Mode
 // =============================================================================
 
-static void divide_init(DivideContext *ctx) {
+static void divide_init(DivideContext *ctx, const AppSettings *settings) {
     ctx->output_state = false;
     ctx->last_input = false;
     ctx->counter = 0;
-    ctx->divisor = DIVIDE_DEFAULT;
     ctx->pulse_start = 0;
+
+    // Get divisor from settings
+    if (settings && settings->divide_divisor_idx < DIVIDE_DIVISOR_COUNT) {
+        ctx->divisor = PROGMEM_READ_BYTE(&DIVIDE_DIVISOR_VALUES[settings->divide_divisor_idx]);
+    } else {
+        ctx->divisor = DIVIDE_DEFAULT;
+    }
 }
 
 static bool divide_process(DivideContext *ctx, bool input, bool *output) {
@@ -183,12 +198,18 @@ static void divide_get_led(const DivideContext *ctx, LEDFeedback *fb) {
 // Cycle Mode
 // =============================================================================
 
-static void cycle_init(CycleContext *ctx) {
+static void cycle_init(CycleContext *ctx, const AppSettings *settings) {
     ctx->output_state = false;
     ctx->running = true;  // Start running immediately
     ctx->last_toggle = 0;
-    ctx->period_ms = CYCLE_DEFAULT_PERIOD_MS;
     ctx->phase = 0;
+
+    // Get period from settings
+    if (settings && settings->cycle_tempo_idx < CYCLE_TEMPO_COUNT) {
+        ctx->period_ms = PROGMEM_READ_WORD(&CYCLE_PERIOD_VALUES[settings->cycle_tempo_idx]);
+    } else {
+        ctx->period_ms = CYCLE_DEFAULT_PERIOD_MS;
+    }
 }
 
 static bool cycle_process(CycleContext *ctx, bool input, bool *output) {
@@ -244,7 +265,7 @@ static void cycle_get_led(const CycleContext *ctx, LEDFeedback *fb) {
 // Public API - Switch-based dispatch
 // =============================================================================
 
-void mode_handler_init(uint8_t mode, ModeContext *ctx) {
+void mode_handler_init(uint8_t mode, ModeContext *ctx, const AppSettings *settings) {
     if (!ctx) return;
 
     switch (mode) {
@@ -252,16 +273,16 @@ void mode_handler_init(uint8_t mode, ModeContext *ctx) {
             gate_init(&ctx->gate);
             break;
         case MODE_TRIGGER:
-            trigger_init(&ctx->trigger);
+            trigger_init(&ctx->trigger, settings);
             break;
         case MODE_TOGGLE:
             toggle_init(&ctx->toggle);
             break;
         case MODE_DIVIDE:
-            divide_init(&ctx->divide);
+            divide_init(&ctx->divide, settings);
             break;
         case MODE_CYCLE:
-            cycle_init(&ctx->cycle);
+            cycle_init(&ctx->cycle, settings);
             break;
         default:
             gate_init(&ctx->gate);

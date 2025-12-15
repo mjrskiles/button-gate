@@ -37,19 +37,19 @@ TEST(AppInitTests, TestGetDefaults) {
     AppSettings settings;
     // Initialize with garbage to verify it gets overwritten
     settings.mode = 0xFF;
-    settings.cv_function = 0xFF;
-    settings.param1 = 0xFF;
+    settings.trigger_pulse_idx = 0xFF;
+    settings.trigger_edge = 0xFF;
 
     app_init_get_defaults(&settings);
 
     TEST_ASSERT_EQUAL(MODE_GATE, settings.mode);
-    TEST_ASSERT_EQUAL(0, settings.cv_function);
-    TEST_ASSERT_EQUAL(0, settings.param1);
-    TEST_ASSERT_EQUAL(0, settings.param2);
-    // Verify reserved bytes are zeroed
-    for (int i = 0; i < 4; i++) {
-        TEST_ASSERT_EQUAL(0, settings.reserved[i]);
-    }
+    TEST_ASSERT_EQUAL(2, settings.trigger_pulse_idx);   // Default: 50ms
+    TEST_ASSERT_EQUAL(0, settings.trigger_edge);        // Default: rising
+    TEST_ASSERT_EQUAL(0, settings.divide_divisor_idx);  // Default: /2
+    TEST_ASSERT_EQUAL(2, settings.cycle_tempo_idx);     // Default: 100 BPM
+    TEST_ASSERT_EQUAL(0, settings.toggle_edge);         // Default: rising
+    TEST_ASSERT_EQUAL(0, settings.gate_a_mode);         // Default: off
+    TEST_ASSERT_EQUAL(0, settings.reserved);
 }
 
 /**
@@ -71,13 +71,14 @@ TEST(AppInitTests, TestInitWithEmptyEeprom) {
 TEST(AppInitTests, TestInitWithValidSettings) {
     // First, save valid settings
     AppSettings saved;
-    saved.mode = MODE_PULSE;
-    saved.cv_function = 1;
-    saved.param1 = 42;
-    saved.param2 = 100;
-    for (int i = 0; i < 4; i++) {
-        saved.reserved[i] = 0;
-    }
+    saved.mode = MODE_TRIGGER;
+    saved.trigger_pulse_idx = 1;      // 20ms
+    saved.trigger_edge = 0;           // rising
+    saved.divide_divisor_idx = 2;     // /8
+    saved.cycle_tempo_idx = 3;        // 120 BPM
+    saved.toggle_edge = 0;
+    saved.gate_a_mode = 0;
+    saved.reserved = 0;
     app_init_save_settings(&saved);
 
     // Now init and verify settings are loaded
@@ -85,10 +86,11 @@ TEST(AppInitTests, TestInitWithValidSettings) {
     AppInitResult result = app_init_run(&loaded);
 
     TEST_ASSERT_EQUAL(APP_INIT_OK, result);
-    TEST_ASSERT_EQUAL(MODE_PULSE, loaded.mode);
-    TEST_ASSERT_EQUAL(1, loaded.cv_function);
-    TEST_ASSERT_EQUAL(42, loaded.param1);
-    TEST_ASSERT_EQUAL(100, loaded.param2);
+    TEST_ASSERT_EQUAL(MODE_TRIGGER, loaded.mode);
+    TEST_ASSERT_EQUAL(1, loaded.trigger_pulse_idx);
+    TEST_ASSERT_EQUAL(0, loaded.trigger_edge);
+    TEST_ASSERT_EQUAL(2, loaded.divide_divisor_idx);
+    TEST_ASSERT_EQUAL(3, loaded.cycle_tempo_idx);
 }
 
 /**
@@ -143,12 +145,12 @@ TEST(AppInitTests, TestInitWithInvalidChecksum) {
  * Test init with out-of-range mode value falls back to defaults
  */
 TEST(AppInitTests, TestInitWithInvalidModeValue) {
-    // Save settings with invalid mode (> MODE_TOGGLE)
+    // Save settings with invalid mode (>= MODE_COUNT)
     p_hal->eeprom_write_word(EEPROM_MAGIC_ADDR, EEPROM_MAGIC_VALUE);
     p_hal->eeprom_write_byte(EEPROM_SCHEMA_ADDR, SETTINGS_SCHEMA_VERSION);
 
     // Write settings manually with invalid mode
-    uint8_t invalid_mode = MODE_TOGGLE + 1;  // Out of range
+    uint8_t invalid_mode = MODE_COUNT;  // Out of range (first invalid value)
     p_hal->eeprom_write_byte(EEPROM_SETTINGS_ADDR, invalid_mode);
     // Write zeros for rest of settings
     for (int i = 1; i < 8; i++) {
@@ -166,12 +168,12 @@ TEST(AppInitTests, TestInitWithInvalidModeValue) {
 }
 
 /**
- * Test save and load round-trip for all three modes
+ * Test save and load round-trip for all modes
  */
 TEST(AppInitTests, TestSaveAndLoadAllModes) {
-    CVMode modes[] = {MODE_GATE, MODE_PULSE, MODE_TOGGLE};
+    ModeState modes[] = {MODE_GATE, MODE_TRIGGER, MODE_TOGGLE, MODE_DIVIDE, MODE_CYCLE};
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < MODE_COUNT; i++) {
         // Clear EEPROM between tests
         mock_eeprom_clear();
 
@@ -276,10 +278,13 @@ TEST(AppInitTests, TestSettingsStructPacking) {
     // This ensures EEPROM reads/writes align with struct layout
     uint8_t *base = (uint8_t *)&s;
     TEST_ASSERT_EQUAL_PTR(base + 0, &s.mode);
-    TEST_ASSERT_EQUAL_PTR(base + 1, &s.cv_function);
-    TEST_ASSERT_EQUAL_PTR(base + 2, &s.param1);
-    TEST_ASSERT_EQUAL_PTR(base + 3, &s.param2);
-    TEST_ASSERT_EQUAL_PTR(base + 4, &s.reserved[0]);
+    TEST_ASSERT_EQUAL_PTR(base + 1, &s.trigger_pulse_idx);
+    TEST_ASSERT_EQUAL_PTR(base + 2, &s.trigger_edge);
+    TEST_ASSERT_EQUAL_PTR(base + 3, &s.divide_divisor_idx);
+    TEST_ASSERT_EQUAL_PTR(base + 4, &s.cycle_tempo_idx);
+    TEST_ASSERT_EQUAL_PTR(base + 5, &s.toggle_edge);
+    TEST_ASSERT_EQUAL_PTR(base + 6, &s.gate_a_mode);
+    TEST_ASSERT_EQUAL_PTR(base + 7, &s.reserved);
 }
 
 TEST_GROUP_RUNNER(AppInitTests) {

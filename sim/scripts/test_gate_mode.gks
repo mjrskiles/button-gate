@@ -1,23 +1,24 @@
 # Test gate mode behavior
-# Press button -> output HIGH, release -> output LOW
+# Press Button B -> output HIGH, release -> output LOW
+# Note: Button B is the primary gate control, Button A is for menu
 
 # Wait for app init
 1000    log     Starting gate mode test
 
-# Press button A - need a few ticks for FSM to process
-0       press   a
+# Press button B - need a few ticks for FSM to process
+0       press   b
 20      assert  output high
 
 # Hold for a bit
 100     assert  output high
 
 # Release
-0       release a
+0       release b
 10      assert  output low
 
 # Quick tap
-100     press   a
-50      release a
+100     press   b
+50      release b
 10      assert  output low
 
 # Done

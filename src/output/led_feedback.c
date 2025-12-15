@@ -49,9 +49,28 @@ void led_feedback_init(LEDFeedbackController *ctrl) {
 void led_feedback_update(LEDFeedbackController *ctrl,
                          const LEDFeedback *feedback,
                          uint32_t current_time) {
-    if (!ctrl) return;
+    if (!ctrl || !feedback) return;
 
-    if (!ctrl->in_menu && feedback) {
+    // Handle menu state transitions
+    if (feedback->in_menu && !ctrl->in_menu) {
+        // Entering menu
+        led_feedback_enter_menu(ctrl, feedback->current_page);
+    } else if (!feedback->in_menu && ctrl->in_menu) {
+        // Exiting menu
+        led_feedback_exit_menu(ctrl);
+    }
+
+    // Handle mode changes (when not in menu)
+    if (!feedback->in_menu && feedback->current_mode != ctrl->current_mode) {
+        led_feedback_set_mode(ctrl, feedback->current_mode);
+    }
+
+    // Handle page changes (when in menu)
+    if (feedback->in_menu && feedback->current_page != ctrl->current_page) {
+        led_feedback_set_page(ctrl, feedback->current_page);
+    }
+
+    if (!ctrl->in_menu) {
         // In perform mode: use feedback from mode handler
 
         // Mode LED: show mode color (already set by led_feedback_set_mode)
@@ -81,12 +100,21 @@ void led_feedback_update(LEDFeedbackController *ctrl,
     } else {
         // In menu mode: mode LED blinks, activity LED shows value
 
-        // Update animations
+        // Update mode LED blink animation
         led_animation_update(&ctrl->mode_anim, LED_MODE, current_time);
+
+        // Activity LED shows setting value as brightness
+        // Brightness: 64 (25%) to 255 (100%) based on value position
+        if (feedback->setting_max > 0) {
+            uint8_t brightness = 64 + ((uint16_t)(feedback->setting_value + 1) * 191)
+                                     / feedback->setting_max;
+            NeopixelColor value_color = {brightness, brightness, brightness};
+            led_animation_set_static(&ctrl->activity_anim, value_color);
+        }
         led_animation_update(&ctrl->activity_anim, LED_ACTIVITY, current_time);
     }
 
-    // Flush changes to LEDs
+    // Flush changes to LEDs (only if dirty)
     neopixel_flush();
 }
 
@@ -113,8 +141,7 @@ void led_feedback_enter_menu(LEDFeedbackController *ctrl, uint8_t page) {
     NeopixelColor page_color = led_feedback_get_page_color(page);
     led_animation_set(&ctrl->mode_anim, ANIM_BLINK, page_color, ANIM_BLINK_PERIOD_MS);
 
-    // Activity LED off in menu
-    led_animation_stop(&ctrl->activity_anim, LED_ACTIVITY);
+    // Activity LED will show value feedback (set in update)
 }
 
 void led_feedback_exit_menu(LEDFeedbackController *ctrl) {

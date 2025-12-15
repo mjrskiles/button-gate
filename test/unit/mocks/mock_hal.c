@@ -15,16 +15,12 @@ static uint8_t mock_eeprom[MOCK_EEPROM_SIZE];
 static uint8_t mock_adc_values[MOCK_ADC_CHANNELS] = {0};
 
 // The mock interface instance
-// Note: Pin assignments use unique values for testability, even though
-// Rev2 hardware shares pins (Neopixels on PB0, output LED from buffer).
+// Note: Neopixels are controlled via mock_neopixel.c, not GPIO
 static HalInterface mock_hal = {
     .max_pin            = MOCK_NUM_PINS - 1,  // 0-7 valid
     .button_a_pin       = 2,  // PB2 in Rev2
     .button_b_pin       = 4,  // PB4 in Rev2
-    .sig_out_pin        = 1,  // PB1 in Rev2
-    .led_mode_top_pin   = 5,  // Virtual pin for testing (Neopixel A in Rev2)
-    .led_output_indicator_pin = 6,  // Virtual pin for testing (buffer LED in Rev2)
-    .led_mode_bottom_pin = 7,  // Virtual pin for testing (Neopixel B in Rev2)
+    .sig_out_pin        = 1,  // PB1 in Rev2 (also drives output LED via buffer)
     .init               = mock_hal_init,
     .set_pin            = mock_set_pin,
     .clear_pin          = mock_clear_pin,

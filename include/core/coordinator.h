@@ -154,4 +154,15 @@ bool coordinator_get_output(const Coordinator *coord);
  */
 void coordinator_get_led_feedback(const Coordinator *coord, LEDFeedback *feedback);
 
+/**
+ * Get the current CV input state (after hysteresis).
+ *
+ * Returns the digital state of the CV input after applying
+ * software hysteresis (Schmitt trigger behavior).
+ *
+ * @param coord Pointer to Coordinator struct
+ * @return      true if CV is HIGH (above threshold)
+ */
+bool coordinator_get_cv_state(const Coordinator *coord);
+
 #endif /* GK_CORE_COORDINATOR_H */

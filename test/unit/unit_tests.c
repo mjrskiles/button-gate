@@ -8,8 +8,6 @@
 #include "output/test_neopixel.h"
 #include "output/test_led_animation.h"
 #include "output/test_led_feedback.h"
-#include "state/test_mode.h"
-#include "controller/test_controller.h"
 #include "app_init/test_app_init.h"
 #include "utility/test_struct_sizes.h"
 #include "fsm/test_fsm.h"
@@ -40,8 +38,6 @@ void run_all_tests(void) {
     RunAllNeopixelTests();
     RunAllLEDAnimationTests();
     RunAllLEDFeedbackTests();
-    RunAllModeTests();
-    RunAllIOControllerTests();
     RunAllAppInitTests();
     RunAllStructSizeTests();
     RunAllFSMTests();

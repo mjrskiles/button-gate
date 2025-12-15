@@ -68,4 +68,9 @@ void sim_get_led(uint8_t index, uint8_t *r, uint8_t *g, uint8_t *b);
  */
 uint32_t sim_get_time(void);
 
+/**
+ * Reset simulation time to 0.
+ */
+void sim_reset_time(void);
+
 #endif /* GK_SIM_HAL_H */

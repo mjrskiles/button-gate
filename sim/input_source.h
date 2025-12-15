@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "sim_state.h"
 
 /**
  * @file input_source.h
@@ -59,8 +60,10 @@ struct InputSource {
 
 /**
  * Create keyboard input source (interactive mode)
+ *
+ * @param sim_state  SimState pointer for UI controls (F/L keys), can be NULL
  */
-InputSource* input_source_keyboard_create(void);
+InputSource* input_source_keyboard_create(SimState *sim_state);
 
 /**
  * Create script input source

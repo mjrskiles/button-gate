@@ -19,10 +19,8 @@
 #define NEOPIXEL_PIN PB0                // WS2812B data line (future)
 #define CV_IN_PIN PB3                   // CV input (future)
 
-// LED indicator pins (accent feedback via Neopixel planned)
-#define LED_MODE_TOP_PIN PB0            // Neopixel LED A
-#define LED_OUTPUT_INDICATOR_PIN PB1    // Driven by output buffer circuit
-#define LED_MODE_BOTTOM_PIN PB0         // Neopixel LED B
+// Note: Neopixels are on PB0 but controlled via neopixel.c driver, not GPIO
+// Note: Output LED is driven by the output buffer circuit from SIG_OUT_PIN
 
 void hal_init(void);
 

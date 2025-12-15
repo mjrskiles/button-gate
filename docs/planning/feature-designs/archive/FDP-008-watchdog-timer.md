@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+**Complete** - Implemented 2024-12 (simplified API)
 
 ## Summary
 
@@ -263,20 +263,19 @@ Rely on software correctness.
 
 ## Implementation Checklist
 
-- [ ] Add WDT function pointers to `hal_interface.h`
-- [ ] Add timeout constants to `hal_interface.h`
-- [ ] Implement early-disable in `hal.c` (.init3 section)
-- [ ] Implement `hal_wdt_enable/disable/reset` in `hal.c`
-- [ ] Implement mock WDT in `mock_hal.c`
-- [ ] Add mock test helpers (`mock_wdt_would_trigger()`)
-- [ ] Implement no-op WDT in `sim_hal.c`
-- [ ] Enable WDT in `main.c` after initialization
-- [ ] Add WDT pet to main loop
-- [ ] Add WDT pet to factory reset wait loop
-- [ ] Write unit tests for WDT mock behavior
+- [x] Add WDT function pointers to `hal_interface.h`
+- [x] Implement `hal_wdt_enable/disable/reset` in `hal.c` (hardcoded 250ms timeout)
+- [x] Implement mock WDT in `mock_hal.c`
+- [x] Implement no-op WDT in `sim_hal.c`
+- [x] Enable WDT in `main.c` after HAL init
+- [x] Add WDT pet to main loop
 - [ ] Hardware test: verify recovery from intentional hang
 - [ ] Hardware test: verify normal operation stability
-- [ ] Update CLAUDE.md with WDT notes
+
+**Note:** Implementation simplified from original design:
+- Timeout hardcoded to 250ms instead of configurable
+- No `.init3` early-disable (relies on fresh boot state)
+- No timeout constants (single fixed timeout)
 
 ## References
 

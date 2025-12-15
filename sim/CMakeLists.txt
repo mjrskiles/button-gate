@@ -31,6 +31,9 @@ set(SIM_SOURCES
     sim_neopixel.c
     sim_state.c
     input_source.c
+    cv_source.c
+    socket_server.c
+    command_handler.c
     render/render_terminal.c
     render/render_json.c
     render/render_batch.c
@@ -48,6 +51,9 @@ target_include_directories(gatekeeper-sim PRIVATE
 
 # Define SIM_BUILD and TEST_BUILD (TEST_BUILD reuses test-compatible code paths)
 target_compile_definitions(gatekeeper-sim PRIVATE SIM_BUILD TEST_BUILD)
+
+# Link math library (for sinf in cv_source.c)
+target_link_libraries(gatekeeper-sim PRIVATE m)
 
 # Compiler options
 target_compile_options(gatekeeper-sim PRIVATE

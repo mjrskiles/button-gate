@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "hardware/hal_interface.h"
-#include "state/mode.h"
+#include "core/states.h"
 
 /**
  * @file app_init.h
@@ -46,7 +46,8 @@
 #define EEPROM_MAGIC_VALUE          0x474B
 
 // Schema version - increment when settings struct changes
-#define SETTINGS_SCHEMA_VERSION     1
+// Version 2: Added per-mode configuration parameters
+#define SETTINGS_SCHEMA_VERSION     2
 
 /**
  * Initialization result codes
@@ -64,14 +65,21 @@ typedef enum {
  * 1. Increment SETTINGS_SCHEMA_VERSION
  * 2. Update app_init_migrate_settings() if migration is possible
  * 3. Update EEPROM_CHECKSUM_ADDR if struct size changes
+ *
+ * Version 2 layout (8 bytes):
+ * - Per-mode configuration indices that map to PROGMEM lookup tables
+ * - See include/config/mode_config.h for value definitions
  */
-typedef struct __attribute__((packed)) {
-    uint8_t mode;               // CVMode enum value
-    uint8_t cv_function;        // CV input function (for Rev2)
-    uint8_t param1;             // Mode-specific parameter 1
-    uint8_t param2;             // Mode-specific parameter 2
-    uint8_t reserved[4];        // Future expansion (total: 8 bytes)
-} AppSettings;
+typedef struct AppSettings {
+    uint8_t mode;               // ModeState enum value (0-4)
+    uint8_t trigger_pulse_idx;  // Trigger pulse length: 0=10ms, 1=20ms, 2=50ms, 3=1ms
+    uint8_t trigger_edge;       // Trigger edge: 0=rising, 1=falling, 2=both
+    uint8_t divide_divisor_idx; // Divide ratio: 0=/2, 1=/4, 2=/8, 3=/24
+    uint8_t cycle_tempo_idx;    // Cycle tempo: 0=60, 1=80, 2=100, 3=120, 4=160 BPM
+    uint8_t toggle_edge;        // Toggle edge: 0=rising, 1=falling
+    uint8_t gate_a_mode;        // Gate A button: 0=off, 1=manual trigger
+    uint8_t reserved;           // Future expansion (total: 8 bytes)
+} __attribute__((packed)) AppSettings;
 
 /**
  * Execute the initialization sequence.

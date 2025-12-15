@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Forward declaration to avoid circular dependency
+typedef struct AppSettings AppSettings;
+
 /**
  * @file mode_handlers.h
  * @brief Mode handler contexts and LED feedback types
@@ -51,6 +54,9 @@
  * Gatekeeper Rev2 has two Neopixels in series on PB0:
  * - LED 1 (mode indicator): Shows current mode color
  * - LED 2 (activity indicator): Shows output state / activity
+ *
+ * Also includes application state info for LEDFeedbackController
+ * to handle menu enter/exit transitions automatically.
  */
 typedef struct {
     // Mode indicator LED (LED 1)
@@ -63,6 +69,15 @@ typedef struct {
     uint8_t activity_g;
     uint8_t activity_b;
     uint8_t activity_brightness;  // 0-255, for pulsing effects
+
+    // Application state (for LED controller transitions)
+    uint8_t current_mode;         // Current mode (MODE_GATE, etc.)
+    uint8_t current_page;         // Current menu page (when in menu)
+    bool in_menu;                 // Currently in menu mode
+
+    // Menu value feedback (for activity LED in menu)
+    uint8_t setting_value;        // Current setting index (0-based)
+    uint8_t setting_max;          // Max value + 1 (count of options)
 } LEDFeedback;
 
 // Mode colors (approximate, can be tuned)
@@ -172,14 +187,16 @@ typedef union {
 // =============================================================================
 
 /**
- * Initialize mode context to default values.
+ * Initialize mode context with settings from EEPROM.
  *
- * Called when switching to a new mode.
+ * Called when switching to a new mode. Uses settings to configure
+ * mode-specific parameters (pulse length, divisor, tempo, etc.)
  *
- * @param mode  Mode to initialize
- * @param ctx   Context union to initialize
+ * @param mode      Mode to initialize
+ * @param ctx       Context union to initialize
+ * @param settings  Application settings (may be NULL for defaults)
  */
-void mode_handler_init(uint8_t mode, ModeContext *ctx);
+void mode_handler_init(uint8_t mode, ModeContext *ctx, const AppSettings *settings);
 
 /**
  * Process input through current mode handler.

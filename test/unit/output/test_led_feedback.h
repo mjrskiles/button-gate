@@ -53,8 +53,11 @@ TEST(LEDFeedbackTests, TestModeColors) {
 TEST(LEDFeedbackTests, TestSetModeUpdatesColor) {
     led_feedback_set_mode(&ctrl, MODE_TOGGLE);
 
-    // Update to apply the color
-    LEDFeedback fb = {0};
+    // Update to apply the color (feedback must include current_mode to avoid reset)
+    LEDFeedback fb = {
+        .current_mode = MODE_TOGGLE,
+        .in_menu = false
+    };
     led_feedback_update(&ctrl, &fb, 0);
 
     // Mode LED should now be toggle color (orange)
@@ -70,7 +73,9 @@ TEST(LEDFeedbackTests, TestActivityLED) {
     LEDFeedback fb = {
         .mode_r = 0, .mode_g = 255, .mode_b = 0,
         .activity_r = 255, .activity_g = 255, .activity_b = 255,
-        .activity_brightness = 255
+        .activity_brightness = 255,
+        .current_mode = MODE_GATE,
+        .in_menu = false
     };
 
     led_feedback_update(&ctrl, &fb, 0);
@@ -83,7 +88,9 @@ TEST(LEDFeedbackTests, TestActivityOff) {
 
     LEDFeedback fb = {
         .activity_r = 255, .activity_g = 255, .activity_b = 255,
-        .activity_brightness = 0  // Off
+        .activity_brightness = 0,  // Off
+        .current_mode = MODE_GATE,
+        .in_menu = false
     };
 
     led_feedback_update(&ctrl, &fb, 0);

@@ -2,9 +2,11 @@
 #include "app_init.h"
 #include "hardware/hal_interface.h"
 #include "core/coordinator.h"
+#include "output/led_feedback.h"
 
 static Coordinator coordinator;
 static AppSettings settings;
+static LEDFeedbackController led_ctrl;
 
 int main(void) {
     // Initialize hardware
@@ -28,6 +30,10 @@ int main(void) {
     // Start coordinator
     coordinator_start(&coordinator);
 
+    // Initialize LED feedback controller
+    led_feedback_init(&led_ctrl);
+    led_feedback_set_mode(&led_ctrl, coordinator_get_mode(&coordinator));
+
     // Main loop
     while (1) {
         // Feed watchdog at start of each loop iteration
@@ -36,13 +42,17 @@ int main(void) {
         // Update coordinator (processes inputs, runs mode handlers)
         coordinator_update(&coordinator);
 
+        // Update LED feedback
+        LEDFeedback feedback;
+        coordinator_get_led_feedback(&coordinator, &feedback);
+        led_feedback_update(&led_ctrl, &feedback, p_hal->millis());
+
         // Update output pin based on coordinator output state
+        // Note: Output LED is driven in-circuit from the signal output buffer
         if (coordinator_get_output(&coordinator)) {
             p_hal->set_pin(p_hal->sig_out_pin);
-            p_hal->set_pin(p_hal->led_output_indicator_pin);
         } else {
             p_hal->clear_pin(p_hal->sig_out_pin);
-            p_hal->clear_pin(p_hal->led_output_indicator_pin);
         }
     }
 

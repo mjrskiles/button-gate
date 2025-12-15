@@ -31,7 +31,7 @@ TEST_TEAR_DOWN(ModeHandlersTests) {
 
 TEST(ModeHandlersTests, TestGateInit) {
     ModeContext ctx;
-    mode_handler_init(MODE_GATE, &ctx);
+    mode_handler_init(MODE_GATE, &ctx, NULL);
     TEST_ASSERT_FALSE(ctx.gate.output_state);
 }
 
@@ -39,7 +39,7 @@ TEST(ModeHandlersTests, TestGateFollowsInput) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_GATE, &ctx);
+    mode_handler_init(MODE_GATE, &ctx, NULL);
 
     // Input LOW -> Output LOW
     mode_handler_process(MODE_GATE, &ctx, false, &output);
@@ -59,7 +59,7 @@ TEST(ModeHandlersTests, TestGateReturnsChangedFlag) {
     bool output;
     bool changed;
 
-    mode_handler_init(MODE_GATE, &ctx);
+    mode_handler_init(MODE_GATE, &ctx, NULL);
 
     // First call with LOW - no change (already LOW)
     changed = mode_handler_process(MODE_GATE, &ctx, false, &output);
@@ -80,7 +80,7 @@ TEST(ModeHandlersTests, TestGateReturnsChangedFlag) {
 
 TEST(ModeHandlersTests, TestTriggerInit) {
     ModeContext ctx;
-    mode_handler_init(MODE_TRIGGER, &ctx);
+    mode_handler_init(MODE_TRIGGER, &ctx, NULL);
     TEST_ASSERT_FALSE(ctx.trigger.output_state);
     TEST_ASSERT_FALSE(ctx.trigger.last_input);
     TEST_ASSERT_EQUAL(TRIGGER_PULSE_DEFAULT, ctx.trigger.pulse_duration_ms);
@@ -90,7 +90,7 @@ TEST(ModeHandlersTests, TestTriggerPulseOnRisingEdge) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_TRIGGER, &ctx);
+    mode_handler_init(MODE_TRIGGER, &ctx, NULL);
 
     // Start with input LOW
     mode_handler_process(MODE_TRIGGER, &ctx, false, &output);
@@ -105,7 +105,7 @@ TEST(ModeHandlersTests, TestTriggerPulseExpires) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_TRIGGER, &ctx);
+    mode_handler_init(MODE_TRIGGER, &ctx, NULL);
     ctx.trigger.pulse_duration_ms = 10;  // 10ms pulse
 
     // Trigger pulse
@@ -128,7 +128,7 @@ TEST(ModeHandlersTests, TestTriggerNoRetriggerDuringPulse) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_TRIGGER, &ctx);
+    mode_handler_init(MODE_TRIGGER, &ctx, NULL);
     ctx.trigger.pulse_duration_ms = 50;
 
     // First trigger
@@ -155,7 +155,7 @@ TEST(ModeHandlersTests, TestTriggerNoRetriggerDuringPulse) {
 
 TEST(ModeHandlersTests, TestToggleInit) {
     ModeContext ctx;
-    mode_handler_init(MODE_TOGGLE, &ctx);
+    mode_handler_init(MODE_TOGGLE, &ctx, NULL);
     TEST_ASSERT_FALSE(ctx.toggle.output_state);
     TEST_ASSERT_FALSE(ctx.toggle.last_input);
 }
@@ -164,7 +164,7 @@ TEST(ModeHandlersTests, TestToggleFlipsOnRisingEdge) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_TOGGLE, &ctx);
+    mode_handler_init(MODE_TOGGLE, &ctx, NULL);
 
     // Initial state: LOW
     mode_handler_process(MODE_TOGGLE, &ctx, false, &output);
@@ -195,7 +195,7 @@ TEST(ModeHandlersTests, TestToggleIgnoresHold) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_TOGGLE, &ctx);
+    mode_handler_init(MODE_TOGGLE, &ctx, NULL);
 
     // Press
     mode_handler_process(MODE_TOGGLE, &ctx, false, &output);
@@ -215,7 +215,7 @@ TEST(ModeHandlersTests, TestToggleIgnoresHold) {
 
 TEST(ModeHandlersTests, TestDivideInit) {
     ModeContext ctx;
-    mode_handler_init(MODE_DIVIDE, &ctx);
+    mode_handler_init(MODE_DIVIDE, &ctx, NULL);
     TEST_ASSERT_FALSE(ctx.divide.output_state);
     TEST_ASSERT_EQUAL(0, ctx.divide.counter);
     TEST_ASSERT_EQUAL(DIVIDE_DEFAULT, ctx.divide.divisor);
@@ -225,7 +225,7 @@ TEST(ModeHandlersTests, TestDivideByTwo) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_DIVIDE, &ctx);
+    mode_handler_init(MODE_DIVIDE, &ctx, NULL);
     ctx.divide.divisor = 2;
 
     // First pulse - no output yet
@@ -251,7 +251,7 @@ TEST(ModeHandlersTests, TestDivideByFour) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_DIVIDE, &ctx);
+    mode_handler_init(MODE_DIVIDE, &ctx, NULL);
     ctx.divide.divisor = 4;
 
     // Pulses 1-3: no output
@@ -273,7 +273,7 @@ TEST(ModeHandlersTests, TestDivideByFour) {
 
 TEST(ModeHandlersTests, TestCycleInit) {
     ModeContext ctx;
-    mode_handler_init(MODE_CYCLE, &ctx);
+    mode_handler_init(MODE_CYCLE, &ctx, NULL);
     TEST_ASSERT_FALSE(ctx.cycle.output_state);
     TEST_ASSERT_TRUE(ctx.cycle.running);
     TEST_ASSERT_EQUAL(CYCLE_DEFAULT_PERIOD_MS, ctx.cycle.period_ms);
@@ -283,7 +283,7 @@ TEST(ModeHandlersTests, TestCycleOscillates) {
     ModeContext ctx;
     bool output;
 
-    mode_handler_init(MODE_CYCLE, &ctx);
+    mode_handler_init(MODE_CYCLE, &ctx, NULL);
     ctx.cycle.period_ms = 100;  // 100ms period = 50ms half-period
 
     // Initial state
@@ -305,7 +305,7 @@ TEST(ModeHandlersTests, TestCycleIgnoresInput) {
     ModeContext ctx;
     bool output1, output2;
 
-    mode_handler_init(MODE_CYCLE, &ctx);
+    mode_handler_init(MODE_CYCLE, &ctx, NULL);
     ctx.cycle.period_ms = 100;
 
     // Process with input LOW
@@ -330,7 +330,7 @@ TEST(ModeHandlersTests, TestGateLEDColors) {
     ModeContext ctx;
     LEDFeedback fb;
 
-    mode_handler_init(MODE_GATE, &ctx);
+    mode_handler_init(MODE_GATE, &ctx, NULL);
     mode_handler_get_led(MODE_GATE, &ctx, &fb);
 
     // Mode LED should be green
@@ -343,7 +343,7 @@ TEST(ModeHandlersTests, TestTriggerLEDColors) {
     ModeContext ctx;
     LEDFeedback fb;
 
-    mode_handler_init(MODE_TRIGGER, &ctx);
+    mode_handler_init(MODE_TRIGGER, &ctx, NULL);
     mode_handler_get_led(MODE_TRIGGER, &ctx, &fb);
 
     // Mode LED should be cyan
@@ -357,7 +357,7 @@ TEST(ModeHandlersTests, TestLEDActivityReflectsOutput) {
     LEDFeedback fb;
     bool output;
 
-    mode_handler_init(MODE_GATE, &ctx);
+    mode_handler_init(MODE_GATE, &ctx, NULL);
 
     // Output LOW -> activity brightness 0
     mode_handler_process(MODE_GATE, &ctx, false, &output);
@@ -380,7 +380,7 @@ TEST(ModeHandlersTests, TestNullSafety) {
     LEDFeedback fb;
 
     // Should not crash
-    mode_handler_init(MODE_GATE, NULL);
+    mode_handler_init(MODE_GATE, NULL, NULL);
     mode_handler_process(MODE_GATE, NULL, false, &output);
     mode_handler_process(MODE_GATE, &ctx, false, NULL);
     mode_handler_get_led(MODE_GATE, NULL, &fb);
