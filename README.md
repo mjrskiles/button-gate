@@ -37,12 +37,12 @@ This project is designed as a reference for those learning synth/modular DIY and
 
 ## Hardware
 
-**Target:** ATtiny85 @ 1 MHz (8 MHz internal oscillator with CKDIV8 fuse enabled)
+**Target:** ATtiny85 @ 8 MHz (internal RC oscillator, CKDIV8 fuse disabled)
 
 | Resource | Size | Usage |
 |----------|------|-------|
-| Flash | 8 KB | ~68% used |
-| SRAM | 512 B | ~24% used |
+| Flash | 8 KB | ~94% used |
+| SRAM | 512 B | ~39% used |
 | EEPROM | 512 B | Settings persistence |
 
 **Pin Assignment:**

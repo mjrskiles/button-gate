@@ -41,7 +41,7 @@
 #define NEOPIXEL_PORT   PORTB
 #define NEOPIXEL_DDR    DDRB
 
-// LED buffer in GRB order (WS2812B native format)
+// LED buffer in RGB order (some WS2812B variants use RGB instead of GRB)
 static uint8_t led_buffer[NEOPIXEL_COUNT * 3];
 static bool buffer_dirty = false;
 
