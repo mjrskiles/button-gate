@@ -30,6 +30,12 @@ static uint8_t led_b[SIM_NUM_LEDS] = {0};
 // CV input voltage (0-255 ADC value, maps to 0-5V)
 static uint8_t sim_cv_voltage = 0;
 
+// Watchdog simulation
+#define SIM_WDT_TIMEOUT_MS 250
+static bool wdt_enabled = false;
+static uint32_t wdt_last_reset_time = 0;
+static bool wdt_fired = false;
+
 // Pin assignments (match mock_hal for consistency)
 // Note: Neopixels are controlled via sim_neopixel.c, not GPIO
 #define PIN_BUTTON_A    2
@@ -55,6 +61,7 @@ static uint8_t sim_adc_read(uint8_t channel);
 static void sim_wdt_enable(void);
 static void sim_wdt_reset(void);
 static void sim_wdt_disable(void);
+static void check_watchdog(void);
 
 // Global HAL pointer (defined in hal_interface.h as extern)
 HalInterface *p_hal = NULL;
@@ -91,6 +98,11 @@ static HalInterface sim_hal = {
 
 static void sim_hal_init(void) {
     memset(pin_states, 0, sizeof(pin_states));
+    // Button pins start HIGH (simulating internal pull-ups, active-low buttons)
+    // Press = clear pin (LOW), Release = set pin (HIGH)
+    pin_states[PIN_BUTTON_A] = 1;
+    pin_states[PIN_BUTTON_B] = 1;
+
     memset(sim_eeprom, 0xFF, sizeof(sim_eeprom));
     sim_time_ms = 0;
 }
@@ -125,10 +137,12 @@ static uint32_t sim_millis(void) {
 
 static void sim_delay_ms(uint32_t ms) {
     sim_time_ms += ms;
+    check_watchdog();
 }
 
 static void sim_advance_time(uint32_t ms) {
     sim_time_ms += ms;
+    check_watchdog();
 }
 
 void sim_reset_time(void) {
@@ -165,10 +179,36 @@ static uint8_t sim_adc_read(uint8_t channel) {
     return 0;
 }
 
-// Watchdog stubs (no-op in simulator)
-static void sim_wdt_enable(void) {}
-static void sim_wdt_reset(void) {}
-static void sim_wdt_disable(void) {}
+// Watchdog simulation - checks if timeout exceeded
+static void check_watchdog(void) {
+    if (wdt_enabled && !wdt_fired) {
+        uint32_t elapsed = sim_time_ms - wdt_last_reset_time;
+        if (elapsed >= SIM_WDT_TIMEOUT_MS) {
+            wdt_fired = true;
+            fprintf(stderr, "\n*** WATCHDOG FIRED! ***\n");
+            fprintf(stderr, "    Time since last wdt_reset: %u ms (timeout: %d ms)\n",
+                    (unsigned)elapsed, SIM_WDT_TIMEOUT_MS);
+            fprintf(stderr, "    Current time: %u ms\n", (unsigned)sim_time_ms);
+            fprintf(stderr, "    This would reset the MCU and cause a boot loop!\n\n");
+        }
+    }
+}
+
+static void sim_wdt_enable(void) {
+    wdt_enabled = true;
+    wdt_last_reset_time = sim_time_ms;
+    wdt_fired = false;
+}
+
+static void sim_wdt_reset(void) {
+    if (wdt_enabled) {
+        wdt_last_reset_time = sim_time_ms;
+    }
+}
+
+static void sim_wdt_disable(void) {
+    wdt_enabled = false;
+}
 
 // =============================================================================
 // Public API
@@ -179,11 +219,13 @@ HalInterface* sim_get_hal(void) {
 }
 
 void sim_set_button_a(bool pressed) {
-    pin_states[PIN_BUTTON_A] = pressed;
+    // Active-low: pressed = LOW (0), released = HIGH (1)
+    pin_states[PIN_BUTTON_A] = !pressed;
 }
 
 void sim_set_button_b(bool pressed) {
-    pin_states[PIN_BUTTON_B] = pressed;
+    // Active-low: pressed = LOW (0), released = HIGH (1)
+    pin_states[PIN_BUTTON_B] = !pressed;
 }
 
 void sim_set_cv_voltage(uint8_t adc_value) {
@@ -198,11 +240,13 @@ void sim_adjust_cv_voltage(int16_t delta) {
 }
 
 bool sim_get_button_a(void) {
-    return pin_states[PIN_BUTTON_A];
+    // Active-low: pin LOW = pressed (return true)
+    return !pin_states[PIN_BUTTON_A];
 }
 
 bool sim_get_button_b(void) {
-    return pin_states[PIN_BUTTON_B];
+    // Active-low: pin LOW = pressed (return true)
+    return !pin_states[PIN_BUTTON_B];
 }
 
 uint8_t sim_get_cv_voltage(void) {
@@ -234,4 +278,12 @@ void sim_get_led(uint8_t index, uint8_t *r, uint8_t *g, uint8_t *b) {
 
 uint32_t sim_get_time(void) {
     return sim_time_ms;
+}
+
+bool sim_wdt_has_fired(void) {
+    return wdt_fired;
+}
+
+void sim_wdt_clear_fired(void) {
+    wdt_fired = false;
 }

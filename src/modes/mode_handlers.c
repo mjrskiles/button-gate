@@ -38,11 +38,11 @@ static void gate_get_led(const GateContext *ctx, LEDFeedback *fb) {
     fb->mode_g = LED_COLOR_GATE_G;
     fb->mode_b = LED_COLOR_GATE_B;
 
-    // Activity LED: Mirrors output state
+    // Activity LED: Mirrors output state (same color as mode)
     fb->activity_brightness = ctx->output_state ? 255 : 0;
-    fb->activity_r = LED_ACTIVITY_R;
-    fb->activity_g = LED_ACTIVITY_G;
-    fb->activity_b = LED_ACTIVITY_B;
+    fb->activity_r = LED_COLOR_GATE_R;
+    fb->activity_g = LED_COLOR_GATE_G;
+    fb->activity_b = LED_COLOR_GATE_B;
 }
 
 // =============================================================================
@@ -92,11 +92,11 @@ static void trigger_get_led(const TriggerContext *ctx, LEDFeedback *fb) {
     fb->mode_g = LED_COLOR_TRIGGER_G;
     fb->mode_b = LED_COLOR_TRIGGER_B;
 
-    // Activity LED: Mirrors output pulse
+    // Activity LED: Mirrors output pulse (same color as mode)
     fb->activity_brightness = ctx->output_state ? 255 : 0;
-    fb->activity_r = LED_ACTIVITY_R;
-    fb->activity_g = LED_ACTIVITY_G;
-    fb->activity_b = LED_ACTIVITY_B;
+    fb->activity_r = LED_COLOR_TRIGGER_R;
+    fb->activity_g = LED_COLOR_TRIGGER_G;
+    fb->activity_b = LED_COLOR_TRIGGER_B;
 }
 
 // =============================================================================
@@ -128,11 +128,11 @@ static void toggle_get_led(const ToggleContext *ctx, LEDFeedback *fb) {
     fb->mode_g = LED_COLOR_TOGGLE_G;
     fb->mode_b = LED_COLOR_TOGGLE_B;
 
-    // Activity LED: Shows latched state
+    // Activity LED: Shows latched state (same color as mode)
     fb->activity_brightness = ctx->output_state ? 255 : 0;
-    fb->activity_r = LED_ACTIVITY_R;
-    fb->activity_g = LED_ACTIVITY_G;
-    fb->activity_b = LED_ACTIVITY_B;
+    fb->activity_r = LED_COLOR_TOGGLE_R;
+    fb->activity_g = LED_COLOR_TOGGLE_G;
+    fb->activity_b = LED_COLOR_TOGGLE_B;
 }
 
 // =============================================================================
@@ -187,11 +187,11 @@ static void divide_get_led(const DivideContext *ctx, LEDFeedback *fb) {
     fb->mode_g = LED_COLOR_DIVIDE_G;
     fb->mode_b = LED_COLOR_DIVIDE_B;
 
-    // Activity LED: Flash on divided output
+    // Activity LED: Flash on divided output (same color as mode)
     fb->activity_brightness = ctx->output_state ? 255 : 0;
-    fb->activity_r = LED_ACTIVITY_R;
-    fb->activity_g = LED_ACTIVITY_G;
-    fb->activity_b = LED_ACTIVITY_B;
+    fb->activity_r = LED_COLOR_DIVIDE_R;
+    fb->activity_g = LED_COLOR_DIVIDE_G;
+    fb->activity_b = LED_COLOR_DIVIDE_B;
 }
 
 // =============================================================================
@@ -247,7 +247,7 @@ static void cycle_get_led(const CycleContext *ctx, LEDFeedback *fb) {
     fb->mode_g = LED_COLOR_CYCLE_G;
     fb->mode_b = LED_COLOR_CYCLE_B;
 
-    // Activity LED: Pulsing brightness following cycle phase
+    // Activity LED: Pulsing brightness following cycle phase (same color as mode)
     // Triangle wave: ramp up 0-127, ramp down 128-255
     uint8_t brightness;
     if (ctx->phase < 128) {
@@ -256,9 +256,9 @@ static void cycle_get_led(const CycleContext *ctx, LEDFeedback *fb) {
         brightness = (255 - ctx->phase) * 2;
     }
     fb->activity_brightness = brightness;
-    fb->activity_r = LED_ACTIVITY_R;
-    fb->activity_g = LED_ACTIVITY_G;
-    fb->activity_b = LED_ACTIVITY_B;
+    fb->activity_r = LED_COLOR_CYCLE_R;
+    fb->activity_g = LED_COLOR_CYCLE_G;
+    fb->activity_b = LED_COLOR_CYCLE_B;
 }
 
 // =============================================================================

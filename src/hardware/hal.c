@@ -44,11 +44,10 @@ HalInterface *p_hal = &default_hal;
  * Also initializes Timer0 for millisecond timing and ADC for CV input.
  */
 void hal_init(void) {
-    // Configure button pins as inputs
+    // Configure button pins as inputs with internal pull-ups (active-low)
+    // This avoids external pull-downs that interfere with ISP programming
     DDRB &= ~((1 << BUTTON_A_PIN) | (1 << BUTTON_B_PIN));
-
-    // Ensure button pins have no internal pull-up (external pull-down expected)
-    PORTB &= ~((1 << BUTTON_A_PIN) | (1 << BUTTON_B_PIN));
+    PORTB |= (1 << BUTTON_A_PIN) | (1 << BUTTON_B_PIN);
 
     // Set signal out pin as output, initially low
     DDRB |= (1 << SIG_OUT_PIN);
@@ -134,29 +133,40 @@ static uint16_t timer0_millis_last = 0;
 #error "F_CPU must be defined (e.g., 1000000UL for 1MHz, 8000000UL for 8MHz)"
 #endif
 
-#define TIMER0_PRESCALER      8
+// Prescaler selection based on F_CPU to keep compare value in 8-bit range
+// Target: 1ms intervals (1000 Hz)
+#if F_CPU == 8000000UL
+    #define TIMER0_PRESCALER      64
+    #define TIMER0_CS_BITS        ((1 << CS01) | (1 << CS00))  // CS0[2:0] = 011 = /64
+#elif F_CPU == 1000000UL
+    #define TIMER0_PRESCALER      8
+    #define TIMER0_CS_BITS        (1 << CS01)                   // CS0[2:0] = 010 = /8
+#else
+    #error "Unsupported F_CPU. Add prescaler configuration for this frequency."
+#endif
+
 #define TIMER0_TARGET_HZ      1000  // 1ms intervals
 #define TIMER0_COMPARE_VALUE  ((F_CPU / TIMER0_PRESCALER / TIMER0_TARGET_HZ) - 1)
 
 // Compile-time validation
 #if TIMER0_COMPARE_VALUE > 255
-#error "F_CPU too high for 8-bit timer with prescaler 8. Increase prescaler."
+#error "Timer compare value too large for 8-bit register."
 #endif
-#if TIMER0_COMPARE_VALUE < 1
-#error "F_CPU too low for accurate 1ms timing with prescaler 8."
+#if TIMER0_COMPARE_VALUE < 10
+#error "Timer compare value too small for accurate timing."
 #endif
 
 /**
  * Initializes Timer0 for millisecond timing.
- * Uses CTC mode with prescaler 8.
+ * Uses CTC mode with prescaler selected based on F_CPU.
  * Compare value is calculated from F_CPU at compile time.
  */
 void hal_init_timer0(void) {
     // Set Timer0 to CTC mode
     TCCR0A = (1 << WGM01);
 
-    // Set prescaler to 8 (CS01)
-    TCCR0B = (1 << CS01);
+    // Set prescaler (selected at compile time based on F_CPU)
+    TCCR0B = TIMER0_CS_BITS;
 
     // Set compare value for 1ms intervals
     OCR0A = TIMER0_COMPARE_VALUE;

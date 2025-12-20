@@ -51,6 +51,11 @@ void mock_hal_init(void) {
     for (int i = 0; i < MOCK_NUM_PINS; i++) {
         mock_pin_states[i] = 0;
     }
+    // Button pins start HIGH (simulating internal pull-ups, active-low buttons)
+    // Press = clear pin (LOW), Release = set pin (HIGH)
+    mock_pin_states[mock_hal.button_a_pin] = 1;
+    mock_pin_states[mock_hal.button_b_pin] = 1;
+
     vmock_millis = 0;
     // Initialize EEPROM to 0xFF (erased state)
     memset(mock_eeprom, 0xFF, MOCK_EEPROM_SIZE);

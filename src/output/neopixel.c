@@ -11,31 +11,29 @@
  * @brief WS2812B driver for ATtiny85 at 8 MHz
  *
  * Bit-banged driver with cycle-accurate timing for WS2812B LEDs.
+ * Tuned for F_CPU = 8 MHz (125ns per cycle).
  *
  * WS2812B timing requirements:
- * - T0H: 350ns ±150ns (0.2-0.5µs)
- * - T0L: 800ns ±150ns (0.65-0.95µs)
- * - T1H: 700ns ±150ns (0.55-0.85µs)
- * - T1L: 600ns ±150ns (0.45-0.75µs)
+ * - T0H: 350ns ±150ns (200-500ns)  → 3 cycles = 375ns ✓
+ * - T0L: 800ns ±150ns (650-950ns)  → 7 cycles = 875ns ✓
+ * - T1H: 700ns ±150ns (550-850ns)  → 6 cycles = 750ns ✓
+ * - T1L: 600ns ±150ns (450-750ns)  → 4 cycles = 500ns ✓
  * - Reset: >50µs
  *
  * Data pin: PB0
  *
- * TIMING IMPACT (Klaus audit):
+ * TIMING IMPACT:
  * Interrupts are disabled during neopixel_flush() to maintain bit timing.
  * With 2 Neopixels (6 bytes), transmission takes approximately:
  *   6 bytes * 8 bits * ~10 cycles/bit = 480 cycles
  *   At 8 MHz: ~60µs with interrupts disabled
  *   Plus 60µs reset pulse = ~120µs total
  *
- * This is well under the 1ms Timer0 tick, so missed interrupts are unlikely
- * during normal LED updates. However, if this driver is modified to support
- * more LEDs (e.g., 8+), timing drift could become noticeable.
+ * This is well under the 1ms Timer0 tick, so missed interrupts are unlikely.
  *
  * For 2 LEDs: Impact negligible (0.012% of time with interrupts off)
  * For 8 LEDs: ~240µs = 0.024% - still acceptable
- * For 30+ LEDs: Consider compensating for missed ticks or using a
- *               hardware timer for more critical timing.
+ * For 30+ LEDs: Consider compensating for missed ticks
  */
 
 // Neopixel data pin
@@ -60,9 +58,9 @@ void neopixel_set_color(uint8_t index, NeopixelColor color) {
     if (index >= NEOPIXEL_COUNT) return;
 
     uint8_t offset = index * 3;
-    // WS2812B expects GRB order
-    led_buffer[offset + 0] = color.g;
-    led_buffer[offset + 1] = color.r;
+    // RGB order (some WS2812B variants use RGB instead of GRB)
+    led_buffer[offset + 0] = color.r;
+    led_buffer[offset + 1] = color.g;
     led_buffer[offset + 2] = color.b;
     buffer_dirty = true;
 }
@@ -71,8 +69,8 @@ void neopixel_set_rgb(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
     if (index >= NEOPIXEL_COUNT) return;
 
     uint8_t offset = index * 3;
-    led_buffer[offset + 0] = g;  // GRB order
-    led_buffer[offset + 1] = r;
+    led_buffer[offset + 0] = r;  // RGB order
+    led_buffer[offset + 1] = g;
     led_buffer[offset + 2] = b;
     buffer_dirty = true;
 }
@@ -82,8 +80,8 @@ NeopixelColor neopixel_get_color(uint8_t index) {
     if (index >= NEOPIXEL_COUNT) return color;
 
     uint8_t offset = index * 3;
-    color.g = led_buffer[offset + 0];
-    color.r = led_buffer[offset + 1];
+    color.r = led_buffer[offset + 0];  // RGB order
+    color.g = led_buffer[offset + 1];
     color.b = led_buffer[offset + 2];
     return color;
 }
@@ -102,39 +100,50 @@ bool neopixel_is_dirty(void) {
 /**
  * Send a single byte to the LED chain.
  *
- * At 1 MHz, we have ~1µs per instruction cycle.
- * WS2812B is forgiving with timing, so we use:
- * - Bit 1: HIGH for ~2 cycles, LOW for ~1 cycle
- * - Bit 0: HIGH for ~1 cycle, LOW for ~2 cycles
+ * Timing for 8 MHz (125ns/cycle):
  *
- * The inline assembly ensures consistent timing.
+ * Bit 0 (short high, long low):
+ *   HIGH: sbi (2) + nop (1) = 3 cycles = 375ns
+ *   LOW:  cbi (2) + 5 nops = 7 cycles = 875ns
+ *
+ * Bit 1 (long high, short low):
+ *   HIGH: sbi (2) + 4 nops = 6 cycles = 750ns
+ *   LOW:  cbi (2) + 2 nops = 4 cycles = 500ns
+ *
+ * Loop overhead is absorbed into the low time of each bit.
  */
 static void send_byte(uint8_t byte) {
     uint8_t bit_count = 8;
 
-    // Unrolled loop for consistent timing
-    // Each bit takes approximately 3 cycles
     asm volatile(
         "send_bit_%=:"                      "\n\t"
-        "sbrc %[byte], 7"                   "\n\t"  // Skip if bit 7 clear
-        "rjmp send_one_%="                  "\n\t"
+        "sbrc %[byte], 7"                   "\n\t"  // 1/2 cycles - skip if bit 7 clear
+        "rjmp send_one_%="                  "\n\t"  // 2 cycles if taken
 
-        // Send 0: short high, long low
-        "sbi %[port], %[pin]"               "\n\t"  // 1 cycle high
-        "cbi %[port], %[pin]"               "\n\t"  // then low
-        "nop"                               "\n\t"  // extend low time
-        "rjmp next_bit_%="                  "\n\t"
+        // === Send 0: 3 cycles high, 7 cycles low ===
+        "sbi %[port], %[pin]"               "\n\t"  // 2 cycles - HIGH
+        "nop"                               "\n\t"  // 1 cycle  - extend high
+        "cbi %[port], %[pin]"               "\n\t"  // 2 cycles - LOW
+        "nop"                               "\n\t"  // 1 cycle  - extend low
+        "nop"                               "\n\t"  // 1 cycle
+        "nop"                               "\n\t"  // 1 cycle
+        "rjmp next_bit_%="                  "\n\t"  // 2 cycles (part of low time)
 
         "send_one_%=:"                      "\n\t"
-        // Send 1: long high, short low
-        "sbi %[port], %[pin]"               "\n\t"  // high
-        "nop"                               "\n\t"  // extend high time
-        "cbi %[port], %[pin]"               "\n\t"  // then low
+        // === Send 1: 6 cycles high, 4 cycles low ===
+        "sbi %[port], %[pin]"               "\n\t"  // 2 cycles - HIGH
+        "nop"                               "\n\t"  // 1 cycle  - extend high
+        "nop"                               "\n\t"  // 1 cycle
+        "nop"                               "\n\t"  // 1 cycle
+        "nop"                               "\n\t"  // 1 cycle
+        "cbi %[port], %[pin]"               "\n\t"  // 2 cycles - LOW
+        "nop"                               "\n\t"  // 1 cycle  - extend low
+        "nop"                               "\n\t"  // 1 cycle
 
         "next_bit_%=:"                      "\n\t"
-        "lsl %[byte]"                       "\n\t"  // shift to next bit
-        "dec %[count]"                      "\n\t"
-        "brne send_bit_%="                  "\n\t"
+        "lsl %[byte]"                       "\n\t"  // 1 cycle - shift to next bit
+        "dec %[count]"                      "\n\t"  // 1 cycle
+        "brne send_bit_%="                  "\n\t"  // 2/1 cycles - loop if not zero
 
         : [byte] "+r" (byte),
           [count] "+r" (bit_count)

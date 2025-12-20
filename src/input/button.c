@@ -48,8 +48,8 @@ bool button_has_falling_edge(Button *button) {
 }
 
 void button_update(Button *button) {
-    // Read raw pin state
-    STATUS_PUT(button->status, BTN_RAW, p_hal->read_pin(button->pin));
+    // Read raw pin state (active-low: pressed = LOW, so invert)
+    STATUS_PUT(button->status, BTN_RAW, !p_hal->read_pin(button->pin));
 
     // Clear edge flags at start of cycle
     STATUS_CLR(button->status, BTN_RISE | BTN_FALL);

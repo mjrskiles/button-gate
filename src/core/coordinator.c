@@ -262,10 +262,10 @@ void coordinator_update(Coordinator *coord) {
     uint8_t cv_adc = p_hal->adc_read(CV_ADC_CHANNEL);
     bool cv_state = cv_input_update(&coord->cv_input, cv_adc);
 
-    // Build input state from HAL
+    // Build input state from HAL (buttons are active-low: pressed = LOW)
     EventInput input = {
-        .button_a = p_hal->read_pin(p_hal->button_a_pin),
-        .button_b = p_hal->read_pin(p_hal->button_b_pin),
+        .button_a = !p_hal->read_pin(p_hal->button_a_pin),
+        .button_b = !p_hal->read_pin(p_hal->button_b_pin),
         .cv_in = cv_state,
         .current_time = p_hal->millis()
     };

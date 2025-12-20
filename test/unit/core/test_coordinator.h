@@ -44,22 +44,22 @@ TEST_TEAR_DOWN(CoordinatorTests) {
 // =============================================================================
 
 /**
- * Simulate pressing a button by setting the pin high
+ * Simulate pressing a button (active-low: press = LOW)
  */
 static void press_button_a(void) {
-    mock_set_pin(p_hal->button_a_pin);
-}
-
-static void release_button_a(void) {
     mock_clear_pin(p_hal->button_a_pin);
 }
 
+static void release_button_a(void) {
+    mock_set_pin(p_hal->button_a_pin);
+}
+
 static void press_button_b(void) {
-    mock_set_pin(p_hal->button_b_pin);
+    mock_clear_pin(p_hal->button_b_pin);
 }
 
 static void release_button_b(void) {
-    mock_clear_pin(p_hal->button_b_pin);
+    mock_set_pin(p_hal->button_b_pin);
 }
 
 /**

@@ -73,4 +73,16 @@ uint32_t sim_get_time(void);
  */
 void sim_reset_time(void);
 
+/**
+ * Check if the simulated watchdog has fired.
+ * Returns true if wdt_enable() was called and more than 250ms
+ * elapsed without a wdt_reset() call.
+ */
+bool sim_wdt_has_fired(void);
+
+/**
+ * Reset watchdog fired state (for test setup).
+ */
+void sim_wdt_clear_fired(void);
+
 #endif /* GK_SIM_HAL_H */

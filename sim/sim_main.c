@@ -306,9 +306,16 @@ int main(int argc, char **argv) {
     sim_state_add_event(&sim_state, EVT_TYPE_INFO, sim_get_time(),
         "App initialized, mode=%s", sim_mode_str(coordinator_get_mode(&coordinator)));
 
+    // Enable watchdog timer (250ms timeout) after init complete
+    // This mirrors main.c - watchdog must be enabled AFTER app_init completes
+    p_hal->wdt_enable();
+
     // Main loop
     uint32_t last_render = 0;
     while (running) {
+        // Feed watchdog at start of each loop iteration (mirrors main.c)
+        p_hal->wdt_reset();
+
         uint32_t current_time = p_hal->millis();
 
         // ========== SIM-SPECIFIC: Input handling ==========

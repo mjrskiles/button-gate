@@ -80,9 +80,9 @@ bool app_init_check_factory_reset(void) {
         return false;
     }
 
-    // Check if both buttons are currently pressed
-    if (!p_hal->read_pin(p_hal->button_a_pin) ||
-        !p_hal->read_pin(p_hal->button_b_pin)) {
+    // Check if both buttons are currently pressed (active-low: pressed = LOW)
+    if (p_hal->read_pin(p_hal->button_a_pin) ||
+        p_hal->read_pin(p_hal->button_b_pin)) {
         return false;
     }
 
@@ -101,9 +101,9 @@ bool app_init_check_factory_reset(void) {
             last_blink = p_hal->millis();
         }
 
-        // If either button released, abort
-        if (!p_hal->read_pin(p_hal->button_a_pin) ||
-            !p_hal->read_pin(p_hal->button_b_pin)) {
+        // If either button released, abort (active-low: released = HIGH)
+        if (p_hal->read_pin(p_hal->button_a_pin) ||
+            p_hal->read_pin(p_hal->button_b_pin)) {
             // Turn off output LED and return
             p_hal->clear_pin(p_hal->sig_out_pin);
             return false;

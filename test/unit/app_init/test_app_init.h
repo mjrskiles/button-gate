@@ -19,6 +19,23 @@
 #include "hardware/hal_interface.h"
 #include "mocks/mock_hal.h"
 
+// Helper functions for active-low buttons
+static void press_a(void) {
+    p_hal->clear_pin(p_hal->button_a_pin);  // Active-low: press = LOW
+}
+
+static void press_b(void) {
+    p_hal->clear_pin(p_hal->button_b_pin);
+}
+
+static void release_a(void) {
+    p_hal->set_pin(p_hal->button_a_pin);    // Active-low: release = HIGH
+}
+
+static void release_b(void) {
+    p_hal->set_pin(p_hal->button_b_pin);
+}
+
 TEST_GROUP(AppInitTests);
 
 TEST_SETUP(AppInitTests) {
@@ -221,9 +238,10 @@ TEST(AppInitTests, TestClearEeprom) {
  * (Fast path - doesn't involve timing)
  */
 TEST(AppInitTests, TestFactoryResetNotTriggeredWhenButtonsReleased) {
-    // Both buttons are released (pins read 0)
-    p_hal->clear_pin(p_hal->button_a_pin);
-    p_hal->clear_pin(p_hal->button_b_pin);
+    // Both buttons are released (active-low: released = HIGH)
+    // mock_hal_init already sets buttons HIGH, but be explicit
+    release_a();
+    release_b();
 
     bool result = app_init_check_factory_reset();
 
@@ -234,16 +252,16 @@ TEST(AppInitTests, TestFactoryResetNotTriggeredWhenButtonsReleased) {
  * Test that factory reset check returns false when only one button pressed
  */
 TEST(AppInitTests, TestFactoryResetNotTriggeredWithOneButton) {
-    // Only button A pressed
-    p_hal->set_pin(p_hal->button_a_pin);
-    p_hal->clear_pin(p_hal->button_b_pin);
+    // Only button A pressed (active-low)
+    press_a();
+    release_b();
 
     bool result = app_init_check_factory_reset();
     TEST_ASSERT_FALSE(result);
 
     // Only button B pressed
-    p_hal->clear_pin(p_hal->button_a_pin);
-    p_hal->set_pin(p_hal->button_b_pin);
+    release_a();
+    press_b();
 
     result = app_init_check_factory_reset();
     TEST_ASSERT_FALSE(result);
